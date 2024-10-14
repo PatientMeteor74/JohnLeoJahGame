@@ -163,12 +163,12 @@ rooms = [combat_room, shop_room, elite_room, rest_room, loot_room]
 def spawn_rooms():
     possible_rooms = [room for room in rooms if random.random() <= room.spawn_chance]
     num_rooms_to_spawn = min(4, max(1, len(possible_rooms)))
-    return random.sample(possible_rooms, num_rooms_to_spawn)
-spawned_rooms = spawn_rooms()
-
+    return random.sample(possible_rooms, min(num_rooms_to_spawn, len(possible_rooms)))
 
 def choose_path():
+    #*********HAS CHANCE TO NOT PROVIDE ANY ROOMS************pls fix
     print("\n You are presented with a number of branching doorways...\n")
+    spawned_rooms = spawn_rooms()
     for i,room in enumerate(spawned_rooms):
         print(f"[{i + 1}]: {room.description}")
     choice = int(input("\nChoose a room:\n"))
@@ -327,16 +327,20 @@ def fight(enemies: list[Enemy]):
                 for i in range(len(player_attacks)):
                     print(f"[{i + 1}]: {player_attacks[i].name} [⚡️{player_attacks[i].energy}] [⚔️{int(player_attacks[i].damage * player_damage_multiplier)}]")
                 chosen_attack = int(input("\n Choose an attack:"))
-                if len(enemies) > 1:
-                    for i in range(len(enemies)):
-                        print(f"[{i + 1}]: attack {enemies[i].name}")
-                    try:
-                        chosen_enemy = int(input("Choose an enemy to attack:"))
-                        player_attack(player_attacks[(chosen_attack-1)], enemies[(chosen_enemy-1)])
-                    except IndexError:
-                        continue
+                if player_energy-player_attacks[chosen_attack-1].energy < 0:
+                    print("You don't hav enough energy for that attack!")
+                    continue
                 else:
-                    player_attack(player_attacks[(chosen_attack-1)], enemies[0])
+                    if len(enemies) > 1:
+                        for i in range(len(enemies)):
+                            print(f"[{i + 1}]: attack {enemies[i].name}")
+                        try:
+                            chosen_enemy = int(input("Choose an enemy to attack:"))
+                            player_attack(player_attacks[(chosen_attack-1)], enemies[(chosen_enemy-1)])
+                        except IndexError:
+                            continue
+                    else:
+                        player_attack(player_attacks[(chosen_attack-1)], enemies[0])
             elif chosen_action == 3:
                 if player_max_energy != player_energy:
                     print(f"You rest, regaining⚡️{regain_energy()} energy")
@@ -381,8 +385,6 @@ def player_attack(PlayerAttack, Enemy):
 
     for keyword in PlayerAttack.keywords:
         match keyword:
-            case "slap":
-                print("slap")
             case "double_strike":
                 targets.append(Enemy)
 
@@ -439,7 +441,7 @@ def increase_crit(amount):
     global player_crit_mult
     player_crit += amount
     player_crit_mult += amount * 2
-    print(f"⏏️ Your crit chance raised from 🎯[{(player_crit - amount):.2f}%] to 🎯[{(player_crit):.2f}%]")
+    print(f"⏏️ Your crit chance raised from 🎯[{int(((player_crit - amount)*100))}%] to 🎯[{int(((player_crit)*100))}%]")
 
 
 def increase_energy(amount):
