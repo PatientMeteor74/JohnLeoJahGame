@@ -30,19 +30,25 @@ class Enemy:
                         player_stunned = True
 
     def damage(self, amount):
-        crit = 1
-        if random.randint(1,20) == 20:
-            crit = 2
-        damage_taken = max(0, (amount * crit - (random.randint(0,self.armor))))
+        crit = False
+        if random.random() <= player_crit:
+            crit = True
+            damage_taken = max(0, (amount * player_crit_mult - (random.randint(0, self.armor))))
+        else:
+            damage_taken = max(0, (amount - (random.randint(0, self.armor))))
+
+        damage_taken = int(damage_taken)
 
         self.health -= damage_taken
 
         if self.health<0:
             self.health = 0
-        if crit == 2:
+        if damage_taken <= 0:
+            print(f"🛡️ Your attack bounces off the {self.name}, dealing no damage.")
+        elif crit == False:
             print(f"💥 You strike the {self.name} dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
         else:
-            print(f"💥 You brutally strike the vitals of the {self.name} dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
+            print(f"🎯💥 You hit the {self.name} with an exceptionally decisive blow, dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
         if self.health <= 0:
             self.die()
 
@@ -51,7 +57,7 @@ class Enemy:
         global xp
 
         reward_gold = self.average_gold * random.uniform(0.0, 2.0)
-        reward_xp = self.average_xp * random.uniform(0.0, 2.0)
+        reward_xp = self.average_xp * random.uniform(0.8, 1.2)
 
         player_gold += int(reward_gold)
         xp += int(reward_xp)
@@ -87,11 +93,14 @@ class EnemyAttack:
 player_health = 100
 player_max_health = 100
 player_armor = 0
+player_dodge = 0.05
 player_damage_multiplier = 1.0
+player_crit = 0.04
+player_crit_mult = 2.0
 
 player_level = 1
 xp = 0
-xp_needed = 100
+xp_needed = 20
 
 delta = 0
 player_turn = False
@@ -104,9 +113,10 @@ player_stunned = False
 #-----------------------------------------------------------------------------------
 
 class Room:
-    def __init__(self, description, name):
+    def __init__(self, description, name, spawn_chance):
         self.description = description
         self.name = name
+        self.spawn_chance = spawn_chance
     def enter(self):
         global player_turn
         global active_enemies
@@ -120,6 +130,7 @@ class Room:
             case "shop":
                 print("You enter a shop. The shopkeeper grumbles something about 'Those damned Goblins and their large noses stealing all my gold...'")
                 open_shop()
+                choose_path()
             case "elite_combat":
                 add_active_enemies(3, 4)
                 player_turn = True
@@ -128,40 +139,42 @@ class Room:
             case "rest":
                 print("You find a quiet place to rest and recover")
                 regain_energy()
+                choose_path()
             case "loot":
                 print("You drool a little at the sight: A pile of loot!")
                 find_loot()
+                choose_path()
             case "mystery":
                 #chance = random.
                 print("")
+                choose_path()
                 
 #-----------------------------------------------------------------------------------
-combat_room = Room("A room filled with the chatters and growls of enemies.", "combat")
-shop_room = Room("A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop")
-elite_room = Room("A door with ominous shadows visible through the light peeking below, labelled 'KEEP OUT!'", "elite_combat")
-rest_room = Room("A quiet pathway which appears perfect for resting.", "rest")
-loot_room = Room("A dark room with a promising glimmer in the center.", "loot")
+combat_room = Room("A room filled with the chatters and growls of enemies.", "combat", .5)
+shop_room = Room("A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .1)
+elite_room = Room("A door with ominous shadows visible through the light peeking below, labelled 'KEEP OUT!'", "elite_combat", .2)
+rest_room = Room("A quiet pathway which appears perfect for resting.", "rest", .5)
+loot_room = Room("A dark room with a promising glimmer in the center.", "loot", .1)
 
 rooms = [combat_room, shop_room, elite_room, rest_room, loot_room]
 
 #-----------------------------------------------------------------------------------
-# def update():
-#   global delta
-#   delta += 1
+
+def spawn_rooms():
+    possible_rooms = [room for room in rooms if random.random() <= room.spawn_chance]
+    num_rooms_to_spawn = min(4, max(1, len(possible_rooms)))
+    return random.sample(possible_rooms, num_rooms_to_spawn)
+spawned_rooms = spawn_rooms()
 
 
-'''while delta >= 0:
-    update()'''
-
-#-----------------------------------------------------------------------------------
 def choose_path():
-    print("You are presented with a number of branching doorways...\n")
-    for i,room in enumerate(rooms):
+    print("\n You are presented with a number of branching doorways...\n")
+    for i,room in enumerate(spawned_rooms):
         print(f"[{i + 1}]: {room.description}")
     choice = int(input("\nChoose a room:\n"))
     global player_turn
-    if 1 <=choice <= len(rooms):
-        selected_room = rooms[choice - 1]
+    if 1 <=choice <= len(spawned_rooms):
+        selected_room = spawned_rooms[choice - 1]
         selected_room.enter()
     else:
         print("you a retard")
@@ -210,10 +223,10 @@ def game_init():
 #-----------------------------------------------------------------------------------
 
 #=====================================ENEMY ATTACKS=======================================#
-slomp = EnemyAttack("Slomp Attack", "basically slomps teh frick out of you lil bro",2, .1, [])
-stab = EnemyAttack("Stab"," lunges forward and stabs you ",3, 0, [])
-d_slash = EnemyAttack("Dagger Slash","quickly slashes you across the chest with a dagger",2, 0, [])
-body_slam = EnemyAttack("Body Slam","slams itself into you with great force", 3, .3, ["stun "])
+slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge",2, .1, [])
+stab = EnemyAttack("Stab"," lunges forward to stab you",3, 0, [])
+d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger",2, 0, [])
+body_slam = EnemyAttack("Body Slam","slams itself toward you with great force", 3, .3, ["stun"])
 d_rage = EnemyAttack("Drunken Rage", "attacks you in a drunken rage",4, .15, [])
 expl_cask = EnemyAttack("Explosive Cask", "It throws an explosive cask at you", 5, .2, [])
 b_roll = EnemyAttack("Barrel Roll", "whirls a cask your feet", 2, 0, [])
@@ -226,7 +239,7 @@ enemy_attacks = [slomp, stab, d_slash, body_slam, d_rage, expl_cask, b_roll, jum
 goblin = Enemy("Grouchy Goblin", 5, 1,[stab,d_slash], 2,5,[])
 skele = Enemy("Scary Skeleton",7,2,[stab,d_rage],1,10,[])
 slomp_monster = Enemy("Slompster", 15, 0,[slomp],5,15,[])
-grogus = Enemy("Grogus", 50, 0, [body_slam,expl_cask,body_slam,d_rage],30,100,[])
+grogus = Enemy("Grogus", 35, 0, [body_slam,expl_cask,body_slam,d_rage],15,25,[])
 living_ore = Enemy("Living Ore", 10, 5, [body_slam, jumpscare],20,5,[])
 
 enemies = [goblin, skele, slomp_monster, grogus, living_ore]
@@ -246,8 +259,15 @@ def damage_player(amount):
     global player_health
     global player_armor
     damage_taken = max(0, (amount - (random.randint(0,player_armor))))
-    player_health -= damage_taken
-    print(f"💥 You take {damage_taken} damage [❤️{player_health}/{player_max_health}]")
+
+    if random.uniform(0.0,1.0) <= player_dodge:
+        print(f"💨 You dodge out of the way, taking no damage")
+    elif damage_taken <= 0:
+        print(f"🛡️ The attack is deflected by your armor, dealing no damage.")
+    else:
+        player_health -= damage_taken
+        print(f"💔 You take {damage_taken} damage [❤️{player_health}/{player_max_health}]")
+
     if player_health <= 0:
         game_over()
 
@@ -302,11 +322,11 @@ def fight(enemies: list[Enemy]):
                         rooms[random.randint(0, len(rooms)) - 1].enter()
                     else:
                         print("The opps block yo path, you cooked, blud")
-                    return
+
             elif chosen_action == 2:
                 for i in range(len(player_attacks)):
                     print(f"[{i + 1}]: {player_attacks[i].name} [⚡️{player_attacks[i].energy}] [⚔️{int(player_attacks[i].damage * player_damage_multiplier)}]")
-                chosen_attack = int(input("Choose an attack:"))
+                chosen_attack = int(input("\n Choose an attack:"))
                 if len(enemies) > 1:
                     for i in range(len(enemies)):
                         print(f"[{i + 1}]: attack {enemies[i].name}")
@@ -343,11 +363,14 @@ def end_fight(health):
 
     test_for_level_up()
     choose_path()
-    if heath == player_max_health:
+    if health == player_max_health:
         print("\nYou made it out unscathed!\n")
     elif health >= player_max_health / 2:
-            print("\nYou made it out with a couple scratches...\n")
-    elif health >=
+        print("\nYou made it out with a couple scratches...\n")
+    elif health >= player_max_health / 4:
+        print("\nYou barely made it out...\n")
+    else:
+        print("\nYou barely made it to the exit, let alone lived...\n")
 #--------------------------------------------------------------------------------------#
 
 def player_attack(PlayerAttack, Enemy):
@@ -364,7 +387,10 @@ def player_attack(PlayerAttack, Enemy):
                 targets.append(Enemy)
 
     for target in targets:
-        target.damage(int(PlayerAttack.damage * player_damage_multiplier))
+        if target.health != 0:
+            target.damage(int(PlayerAttack.damage * player_damage_multiplier))
+        else:
+            targets.remove(target)
 
 #-----------------------------------------------------------------------------------#
 
@@ -383,16 +409,38 @@ def level_up():
     global player_level
 
     player_level += 1
-    print(f"⬆You leveled up to level {player_level} ️\n")
-    increase_damage(.1)
+    print(f"\n ⭐ You leveled up to level {player_level} ️⭐\n")
+
     increase_health(10)
+
+    level_up_options = ["Level up Damage", "Level up Energy", "Level up Crit"]
+
+    for i,option in enumerate(level_up_options):
+        print(f"[{i + 1}]: {option}")
+    choice = int(input("Choose a stat to increase\n"))
+    match choice:
+        case 1:
+            increase_damage(.1)
+        case 2:
+            increase_energy(1)
+        case 3:
+            increase_crit(.1)
+
     xp_needed += (player_level ** 2 * 5)
 
 
 def increase_damage(amount):
     global player_damage_multiplier
     player_damage_multiplier += amount
-    print(f"⬆️ Your damage raised from ⚔️[{(player_damage_multiplier - amount) * 100}%] to ⚔️[{player_damage_multiplier * 100}%]")
+    print(f"⏏️ Your damage raised from ⚔️[{(int(player_damage_multiplier - amount)) * 100}%] to ⚔️[{int(player_damage_multiplier * 100)}%]")
+
+def increase_crit(amount):
+    global player_crit
+    global player_crit_mult
+    player_crit += amount
+    player_crit_mult += amount * 2
+    print(f"⏏️ Your crit chance raised from 🎯[{(player_crit - amount):.2f}%] to 🎯[{(player_crit):.2f}%]")
+
 
 def increase_energy(amount):
     global player_energy
@@ -404,7 +452,7 @@ def increase_energy(amount):
     player_energy += amount
     player_max_energy += amount
 
-    print(f"⬆️ Your energy raised from ⚡️{player_previous_energy}/{player_previous_max_energy} to ⚡️{player_energy}/{player_max_energy}")
+    print(f"⏏️ Your energy raised from ⚡️{player_previous_energy}/{player_previous_max_energy} to ⚡️{player_energy}/{player_max_energy}")
 
 def increase_health(amount):
     global player_health
@@ -416,7 +464,7 @@ def increase_health(amount):
     player_health += amount
     player_max_health += amount
 
-    print(f"⬆️ Your health raised from 💚{player_previous_health}/{player_previous_max_health} to 💚{player_health}/{player_max_health}")
+    print(f"⏏️ Your health raised from 💚{player_previous_health}/{player_previous_max_health} to 💚{player_health}/{player_max_health}")
 
 #-----------------------------------------------------------------------------------#
 
