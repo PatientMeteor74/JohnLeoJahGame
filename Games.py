@@ -4,8 +4,6 @@ import random
 from ast import Index
 from random import randint
 
-#fliggy push test
-
 #-----------------------------------------------------------------------------------#
 
 class Enemy:
@@ -49,7 +47,7 @@ class Enemy:
         elif crit == False:
             print(f"💥 You strike the {self.name} dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
         else:
-            print(f"🎯💥 You hit the {self.name} with an exceptionally decisive blow, dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
+            print(f"🎯💥 You hit the {self.name} with a critical blow, dealing {damage_taken} damage. [❤️{self.health}/{self.max_health}]")
         if self.health <= 0:
             self.die()
 
@@ -96,7 +94,7 @@ player_max_health = 100
 player_armor = 0
 player_dodge = 0.05
 player_damage_multiplier = 1.0
-player_crit = 0.04
+player_crit = 0.01
 player_crit_mult = 2.0
 
 player_level = 1
@@ -227,9 +225,9 @@ def game_init():
 slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge",2, .1, [])
 stab = EnemyAttack("Stab"," lunges forward to stab you",3, 0, [])
 d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger",2, 0, [])
-body_slam = EnemyAttack("Body Slam","slams itself toward you with great force", 3, .3, ["stun"])
+body_slam = EnemyAttack("Body Slam","throws itself toward you with great force", 3, .3, ["stun"])
 d_rage = EnemyAttack("Drunken Rage", "attacks you in a drunken rage",4, .15, [])
-expl_cask = EnemyAttack("Explosive Cask", "It throws an explosive cask at you", 5, .2, [])
+expl_cask = EnemyAttack("Explosive Cask", "throws an explosive cask at you", 5, .2, [])
 b_roll = EnemyAttack("Barrel Roll", "whirls a cask your feet", 2, 0, [])
 jumpscare = EnemyAttack("Jumpscare", "screams AAAAAAAAAAA", 1, 0, ["stun"])
 
@@ -267,7 +265,7 @@ def damage_player(amount):
         print(f"🛡️ The attack is deflected by your armor, dealing no damage.")
     else:
         player_health -= damage_taken
-        print(f"💔 You take {damage_taken} damage [❤️{player_health}/{player_max_health}]")
+        print(f"❤️‍🩹 You take {damage_taken} damage [❤️{player_health}/{player_max_health}]")
 
     if player_health <= 0:
         game_over()
@@ -427,7 +425,7 @@ def level_up():
         case 2:
             increase_energy(1)
         case 3:
-            increase_crit(.1)
+            increase_crit(.11)
 
     xp_needed += (player_level ** 2 * 5)
 
@@ -439,9 +437,8 @@ def increase_damage(amount):
 
 def increase_crit(amount):
     global player_crit
-    global player_crit_mult
+
     player_crit += amount
-    player_crit_mult += amount * 2
     print(f"⏏️ Your crit chance raised from 🎯[{int(((player_crit - amount)*100))}%] to 🎯[{int(((player_crit)*100))}%]")
 
 
@@ -449,30 +446,25 @@ def increase_energy(amount):
     global player_energy
     global player_max_energy
 
-    player_previous_energy = player_energy
-    player_previous_max_energy = player_max_energy
-
     player_energy += amount
     player_max_energy += amount
 
-    print(f"⏏️ Your energy raised from ⚡️{player_previous_energy}/{player_previous_max_energy} to ⚡️{player_energy}/{player_max_energy}")
+    print(f"⏏️ Your max energy raised from ⚡️{player_max_energy - amount} to ⚡️{player_max_energy}")
 
 def increase_health(amount):
-    global player_health
     global player_max_health
+    global player_health
 
-    player_previous_health = player_health
-    player_previous_max_health = player_max_health
-
-    player_health += amount
     player_max_health += amount
+    player_health += amount
 
-    print(f"⏏️ Your health raised from 💚{player_previous_health}/{player_previous_max_health} to 💚{player_health}/{player_max_health}")
+    print(f"⏏️ Your maximum health raised from ❤️{player_max_health - amount} to ❤️{player_max_health}")
 
 #-----------------------------------------------------------------------------------#
 
 def game_over():
-    print("⚰️R.I.P.")
+    print(f"⚰️ You died at level {player_level}")
+    exit()
 
 #-----------------------------------------------------------------------------------#
 
