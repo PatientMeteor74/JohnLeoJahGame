@@ -23,7 +23,7 @@ player_intelligence = 0
 
 player_level = 1
 xp = 0
-xp_needed = 20
+xp_needed = 15
 
 room_number = 0
 floor_rooms = 0
@@ -50,7 +50,7 @@ stat_enemies_killed = 0
 stat_damage_taken = 0
 stat_damage_avoided = 0
 stat_energy_used = 0
-stat_depth = 0
+depth = 0
 
 #-----------------------------------------------------------------------------------
 
@@ -149,8 +149,8 @@ class Enemy:
 
         stat_enemies_killed+=1
 
-        reward_gold = self.average_gold * random.uniform(0.3, 1.7)
-        reward_xp = self.average_xp * random.uniform(0.8, 1.2)
+        reward_gold = int(self.average_gold * random.uniform(0.3, 1.7))
+        reward_xp = int(self.average_xp * random.uniform(0.7, 1.3))
 
         print(f"☠️ It died, giving you {gain_gold(reward_gold)} and {gain_xp(reward_xp)}")
 
@@ -222,7 +222,7 @@ class Room:
                 choose_path()
             case "mystery":
                 #chance = random.
-                print("Freaky mystery room placeholder!!!")
+                print("You see what was behind the fog...")
                 choose_path()
             case "boss":
                 # chance = random.
@@ -299,7 +299,7 @@ class Item:
                 regain_energy(self.effect_amount)
         print(f"You used your {self.name}")
         item_inventory.remove(self)
-#-----------------------------------------------------------------------------------
+#---------------------------------Consumables------------------------------------------#
 health_potion = Item("Health Potion", "Restores a small amount of health.", "health", 20, 15)
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 35)
 enormous_health_potion = Item("Enormous Health Potion", "Heals you to full health", "health", player_max_health, 80)
@@ -307,18 +307,18 @@ energy_potion = Item("Energy Potion", "Restores a small amount of energy.", "ene
 
 items = [health_potion, large_health_potion, enormous_health_potion, energy_potion]
 
-#-----------------------------------------------------------------------------------
+#------------------------------------Rooms---------------------------------------------#
 combat_room = Room("🔹 A room filled with the chatters and growls of enemies.", "combat", .5, "You stumble into another room full of enemies!")
 shop_room = Room("🔹 A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
 elite_room = Room("🔹 A door with ominous shadows visible through the light peeking below, labelled 'KEEP OUT!'", "elite_combat", .2, "You stumbled into a massively dangerous room!")
 rest_room = Room("🔹 A clear pathway which appears safe for resting.", "rest", .05, "You stumble into a calm, peaceful room...")
 loot_room = Room("🔹 A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
-encounter_room = Room("🔹 A shrouded room, you can barely glimpse a silhouette in the fog.", "loot", .1, "You stumble into a foggy, mysterious room.")
-boss_room = Room("🔹 A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
+encounter_room = Room("🔹 A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
+boss_room = Room("🔷 A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
-rooms = [combat_room, shop_room, elite_room, rest_room, loot_room]
+rooms = [combat_room, shop_room, elite_room, rest_room, loot_room, encounter_room, boss_room]
 
-#-----------------------------------------------------------------------------------
+#-------------------------------------Room Logic------------------------------------#
 
 def spawn_rooms():
     global room_number
@@ -333,9 +333,6 @@ def choose_path():
         spawned_rooms = spawn_rooms()
     else:
         spawned_rooms = [boss_room]
-        randomize_floor_rooms()
-
-    #*********HAS CHANCE TO NOT PROVIDE ANY ROOMS************pls fix
     chosen = False
     time.sleep(1)
     while not chosen:
@@ -345,8 +342,10 @@ def choose_path():
             print(f"[{i + 1}]: {room.description}")
 
         print(f"[{len(spawned_rooms) + 1}]: 🔎 Pause for introspection and deep thought.")
-        choice = int(input("\nInput your choice:\n"))
-
+        try:
+            choice = int(input("\nInput your choice:\n"))
+        except ValueError:
+            continue
         global player_turn
 
         if 1 <=choice <= len(spawned_rooms):
@@ -376,17 +375,21 @@ def choose_path():
                 case _:
                     print("youre foolish!")
 
+def randomize_floor_rooms():
+    global floor_rooms
+    global room_number
+
+    room_number = 0
+    floor_rooms = random.randint(100,101)
 
 def go_deeper():
-    global stat_depth
-    stat_depth += 1
-    plural = stat_depth > 1
-    if plural:
-        s="s "
-    else:
-        s=' '
-    print(f"You descend further into the depths... You are {stat_depth} floor{x} in, with an unknowable amount to go...")
-#-----------------------------------------------------------------------------------
+    global depth
+    depth += 1
+    plural = "s" if depth > 1 else ""
+    print(f"You descend further into the depths... You are {depth} floor{plural} in, with an unknowable amount to go...")
+    randomize_floor_rooms()
+    choose_path()
+#--------------------------------------------------------------------------------------#
 
 def open_shop():
     global player_gold
@@ -399,7 +402,7 @@ def open_shop():
 
     in_shop = True
     while in_shop:
-        print(f"\nYou have {player_gold} gold left...\n")
+        print(f"\nYou have 🪙{player_gold} left...\n")
         for i,item in enumerate(shop_items):
             print(f"[{i + 1}]: {item.name} (🪙{item.value})")
         for j,weapon in enumerate(shop_weapons):
@@ -434,7 +437,7 @@ def open_shop():
         except ValueError:
             print("Enter a valid number.")
 
-#-----------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------#
 
 def find_loot():
     global player_gold
@@ -446,12 +449,19 @@ def find_loot():
 
     add_weapon(loot_weapons[random.randint(0,len(loot_weapons) - 1)])
 
-#-----------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------#
 
 def add_active_enemies(minenemies,maxenemies):
-    for i in range(0, random.randint(minenemies, maxenemies)):
-        base_enemy = enemies[random.randint(0, len(enemies) - 1)]
+    global depth
+    global enemies
 
+    large_enemy_favor = 1 + (depth * 0.25)
+
+    weights = [min(1, (1/(enemy.size/large_enemy_favor))) for enemy in enemies]
+    normalized_weights = [weight / sum(weights) for weight in weights]
+    for i in range(0, random.randint(minenemies, maxenemies)):
+        chosen_enemy = random.choices(enemies, weights=normalized_weights, k=1)
+        base_enemy = chosen_enemy[0]
         new_enemy = Enemy(
             base_enemy.name,
             base_enemy.size,
@@ -462,11 +472,11 @@ def add_active_enemies(minenemies,maxenemies):
             base_enemy.average_gold,
             base_enemy.average_xp,
             base_enemy.keywords
-        )
+            )
 
         active_enemies.append(new_enemy)
 
-#-----------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------#
 def game_init():
     print("Welcome to freaky text dungeon, mmm..........")
     print("[1]:🕌 Enter the Dungeon...\n"
@@ -474,6 +484,7 @@ def game_init():
     choice = int(input("Input your choice: \n"))
     if choice == 1:
         print("You enter the dungeon, your heart filled with dread...")
+        randomize_floor_rooms()
         choose_path()
     elif choice == 2:
         return
@@ -481,14 +492,6 @@ def game_init():
         print("Please pick 1 or 2")
         game_init()
 
-#-----------------------------------------------------------------------------------
-
-def randomize_floor_rooms():
-    global floor_rooms
-    global room_number
-
-    room_number = 0
-    floor_rooms = random.randint(9,11)
 
 #=====================================ENEMY ATTACKS=======================================#
 slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge...",5, .1, [])
@@ -508,15 +511,15 @@ enemy_attacks = [slomp, stab, d_slash, body_slam, d_rage, expl_cask, b_roll, scr
 #=========================================================================================#
 
 #=====================================ENEMIES=======================================#
-goblin = Enemy("🔻Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,5,[])
-skele = Enemy("🔻Scary Skeleton", 1, 7,2, 0.05,[stab,d_rage],1,10,[])
-slomp_monster = Enemy("🔻Slompster", 2, 20, 0, 0,[slomp, bite],5,15,[])
-grogus = Enemy("🔻Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],15,25,[])
-living_ore = Enemy("🔻Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[])
-clkwrk_gremlin = Enemy("🔻Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[])
-wailing_wisp = Enemy("🔻Wailing Wisp", 1, 1, 0, 0.33, [scream],0,15,[])
-lost_serf = Enemy("🔻Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[])
-rob_goblin = Enemy("🔻Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[])
+goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,5,[])
+skele = Enemy("🔺Scary Skeleton", 1, 7,2, 0.05,[stab,d_rage],1,10,[])
+slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[])
+grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],20,25,[])
+living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[])
+clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[])
+wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.33, [scream],0,12,[])
+lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[])
+rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[])
 
 enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp,lost_serf,rob_goblin]
 #===================================================================================#
@@ -532,7 +535,7 @@ boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, 
 spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [])
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 9, ["burn","splash","aimless"])
 torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",1,3,["burn"])
-r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,5,["splash","aimless"])
+r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,6,["splash","aimless"])
 weapons = [shortsword,iron_battleaxe,dagger,stick,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe]
 
 #=========================================================================================#
@@ -554,8 +557,8 @@ fentanyl = Debuff("Fentanyl", "🤍","1kg Fent", 10, "Weakness", .5)
 player_weapons = [shortsword,iron_battleaxe,stick, torch]
 player_max_weapons = 4.5
 player_accessories = []
-item_inventory = []
-#-----------------------------------------------------------------------------------#
+item_inventory = [health_potion]
+#----------------------------------Affect-Player-Stats---------------------------------#
 
 def damage_player(amount):
     global player_health
@@ -602,6 +605,7 @@ def heal_player(amount):
         inspiration = 2
 
     healing_taken *= inspiration
+    healing_taken = min(healing_taken, player_max_health - player_health)
     player_health += healing_taken
 
     if inspiration == 1:
@@ -624,7 +628,10 @@ def regain_energy(amount):
         gain = random.randint(1,(player_max_energy - player_energy)) * inspiration
     elif amount==0:
         gain = 1
+
+    gain = min(gain, player_max_energy - player_energy)
     player_energy += gain
+
     if inspiration == 1:
         return f"You restore⚡️{gain} energy."
     else:
@@ -646,8 +653,8 @@ def gain_xp(amount):
     xp += gained_amount
     return f"💠{gained_amount}"
 
-#-----------------------------------------------------------------------------------#
-combat_actions = ["Run Away", "Attack", "Rest"]
+#---------------------------------Fighting-Enemy-------------------------------------#
+combat_actions = ["Run Away", "Attack", "Rest", "Use Item"]
 def fight(enemies: list[Enemy]):
     global player_turn
     global combat_actions
@@ -680,9 +687,14 @@ def fight(enemies: list[Enemy]):
                 continue
             print(f"\nHealth: [❤️{player_health}/{player_max_health}]") #Start of player turn
             for i in range(len(combat_actions)):
-                print(f"[{i + 1}]: {combat_actions[i]}")#Printing Combat actions
-                if len(item_inventory) > 0 and i == len(combat_actions):  # If the player has any items, give option to use items
-                    print(f"[{i}]: Use Item")
+
+                if combat_actions[i] == "Use Item":
+                    if len(item_inventory) > 0:
+                        print(f"[{i + 1}]: {combat_actions[i]}")  # Printing Combat actions
+                    else:
+                        continue
+                else:
+                    print(f"[{i + 1}]: {combat_actions[i]}")  # Printing Combat actions
 
             try:
                 print(f"Current Energy:⚡️{player_energy}")
@@ -711,7 +723,10 @@ def fight(enemies: list[Enemy]):
                     weapon = player_weapons[i]
 
                     print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier)}]")
-                chosen_attack = int(input("\n Choose an attack:"))
+                try:
+                    chosen_attack = int(input("\n Choose an attack:"))
+                except IndexError or ValueError:
+                    continue
                 if player_energy-player_weapons[chosen_attack-1].energy < 0:
                     print("You don't have enough energy for that attack :(")
                     continue
@@ -809,13 +824,13 @@ def player_attack(PlayerAttack, Enemy):
             case "7x_strike":
                 hits *= 7
             case "aimless":
-                    if targets == []:
+                    if not targets:
                         if len(active_enemies) > 1:
                             targets.append(active_enemies[random.randint(1,len(active_enemies) - 1)])
                         else:
                             targets.append(active_enemies[0])
 
-    if targets == []:
+    if not targets:
         targets = [Enemy]
 
     for target in targets:
@@ -830,7 +845,7 @@ def player_attack(PlayerAttack, Enemy):
                 for keyword in PlayerAttack.keywords:
                     match keyword:
                         case "burn":
-                            fire.apply(target)
+                            Debuff.manage_debuff(target, fire, enemy_active_debuffs)
         if target.health <= 0:
             targets.remove(target)
     time.sleep(1.5)
@@ -872,7 +887,7 @@ def add_weapon(weapon_to_add):
 
 
 
-#-----------------------------------------------------------------------------------#
+#------------------------------Level-Up-System-----------------------------------------#
 
 def test_for_level_up():
     global xp
@@ -880,7 +895,6 @@ def test_for_level_up():
     global player_level
 
     while xp >= xp_needed:
-        xp -= xp_needed
         level_up()
 
 def level_up():
@@ -889,7 +903,8 @@ def level_up():
     global player_level
     global player_health
     global player_vitality
-
+    global player_energy
+    xp -= xp_needed
     player_level += 1
     print(f"\n ⭐ You leveled up to level {player_level} ️⭐\n")
 
@@ -910,7 +925,7 @@ def level_up():
         case 4:
             increase_intelligence(1)
 
-    xp_needed += (player_level ** 2 * 5)
+    xp_needed += int(player_level ** 1.5) * 4
     player_energy = player_max_energy
 
 def increase_strength(amount):
@@ -1006,15 +1021,20 @@ def see_stats():
     xp_progress = int(xp // divisor)
     print(f"---- STATS ----\n"
         f"\nCurrent Level: ⭐ {player_level} ⭐\n"
+        f"Strength: 💢{player_strength}\n"
+        f"Vitality: 💚{player_vitality}\n"
+        f"Dexterity: ⚜️{player_dexterity}\n"
+        f"Intelligence: 🧿{player_intelligence}\n"
+        f"------------------------\n"
         f"Gold: 🪙{player_gold}\n"
         f"Health: ❤️{player_health}/{player_max_health}\n"
-        f"Damage: ⚔️{player_damage_multiplier*100}%\n"
+        f"Damage: ⚔️{player_damage_multiplier*100:.1f}%\n"
         f"Armor: 🛡️{player_armor}\n"
         f"Energy: ⚡️{player_energy}/{player_max_energy}\n"
-        f"Dodge Chance: 💨{(player_dodge*100)}%\n"
-        f"Crit Chance: 🎯{int(player_crit*100)}%\n"
+        f"Dodge Chance: 💨{(player_dodge*100):.1f}%\n"
+        f"Crit Chance: 🎯{(player_crit*100):.1f}%\n"
         f"XP: 💠{xp}/{xp_needed}\n")
-    for xp in range(0,xp_progress-1):
+    for xp in range(0,xp_progress):
         print("💠",end="")
     for bar in range(0,10-xp_progress):
         print("- ",end="")
@@ -1031,6 +1051,7 @@ def game_over():
     global stat_damage_taken
     global stat_damage_avoided
     global stat_energy_used
+    global depth
 
     print(f"⚰️ YOU DIED. \n"
           f"---- STATS ----\n"
@@ -1041,7 +1062,8 @@ def game_over():
           f"Killed {stat_enemies_killed} enemies\n"
           f"Took {stat_damage_taken} damage\n"
           f"Avoided {stat_damage_avoided} damage\n"
-          f"Spent {stat_energy_used} energy\n")
+          f"Spent {stat_energy_used} energy\n"
+          f"Made it {depth} floors deep\n")
     exit()
 
 #-----------------------------------------------------------------------------------#
