@@ -200,7 +200,7 @@ class Room:
                 fight(active_enemies)
             case "rest":
                 print("You set up a small camp to recover health and energy")
-                regain_energy()
+                regain_energy(0)
                 heal_player((player_max_health - player_health) * random.uniform(0.5,1.0))
                 choose_path()
             case "loot":
@@ -273,6 +273,7 @@ class Item:
             case "energy":
                 regain_energy(self.effect_amount)
         print(f"You used your {self.name}")
+        item_inventory.remove(self)
 #-----------------------------------------------------------------------------------
 health_potion = Item("Health Potion", "Restores a small amount of health.", "health", 20, 15)
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 35)
@@ -321,18 +322,24 @@ def choose_path():
 
         elif choice == len(spawned_rooms) + 1:
             print(f"[1]:🔎 See Stats\n"
-                  f"[2]:⬅️ Back")
+                  f"[2]:⬅️ Back\n"
+                  f"[3]:🎒Use Item")
             c_choice = int(input("Input your choice:\n"))
             match c_choice:
                 case 1:
                     see_stats()
                 case 2:
                     choose_path()
+                case 3:
+                    for i, item in enumerate(item_inventory):
+                        print(f"[{i + 1}]: Use {item.name}")
+                    item_choice = int(input("Choose an item to use:"))
+                    try:
+                        item_inventory[item_choice - 1].use()
+                    except:
+                        print("youre foolish!")
                 case _:
                     print("youre foolish!")
-    else:
-        print("you a idot!")
-        choose_path()
 
 def open_shop():
     global player_gold
@@ -495,10 +502,10 @@ fentanyl = Debuff("Fentanyl", "1kg Fent", 10, "Weakness", .5)
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick,f_bucket]
+player_weapons = [shortsword,iron_battleaxe,stick]
 player_max_weapons = 5
 player_accessories = []
-item_inventory = []
+item_inventory = [energy_potion]
 #-----------------------------------------------------------------------------------#
 
 def damage_player(amount):
@@ -551,7 +558,7 @@ def heal_player(amount):
     else:
         print(f"💞💞 Eureka! You restore {healing_taken} health [❤️{player_health}/{player_max_health}]")
 
-def regain_energy():
+def regain_energy(amount):
     global player_energy
     global player_max_energy
     global player_intelligence
@@ -559,10 +566,12 @@ def regain_energy():
     inspiration = 1
     if random.random() < 0.05 + (player_intelligence * 0.05):
         inspiration = 2
-
-    if player_max_energy - player_energy > 1:
+    gain=0
+    if amount>0:
+        gain = amount
+    if player_max_energy - player_energy > 1 and amount == 0:
         gain = random.randint(1,(player_max_energy - player_energy)) * inspiration
-    else:
+    elif amount==0:
         gain = 1
     player_energy += gain
     if inspiration == 1:
@@ -599,7 +608,7 @@ def fight(enemies: list[Enemy]):
     global player_energy
     global rooms
     global item_inventory
-    print("It's time to fight\n"
+    print("\nIt's time to fight\n"
           "You're facing...")
     for i in range(0,len(enemies)):
         print(f"[ A {enemies[i].name} with ❤️{enemies[i].health} ]")
@@ -607,11 +616,15 @@ def fight(enemies: list[Enemy]):
         if player_turn:
             if player_stunned:
                 print("You are stunned and cannot act this turn!")
-                time.sleep(4)
+                for i in range(0,3):
+                    print(".",end="")
+                    time.sleep(.66)
+                time.sleep(.66)
                 player_stunned = False  # Reset stun status
                 player_turn = False  # End player's turn
+                print("\n------------------- Enemy Turn -------------------\n")
                 continue
-
+            print(f"\nHealth: [❤️{player_health}/{player_max_health}]")
             for i in range(len(attack_actions)):
                 print(f"[{i + 1}]: {attack_actions[i]}")
             try:
@@ -624,10 +637,10 @@ def fight(enemies: list[Enemy]):
                 if player_energy >= math.floor(player_max_energy/10):
                     print("You pee your pants a little and sprint towards the first escape you see")
                     if random.random() <.65:
-                        print("escape") #placeholder
                         active_enemies = []
                         escape_room = rooms[random.randint(0, len(rooms)) - 1]
                         print(escape_room.stumble_message)
+                        test_for_level_up()
                         escape_room.enter()
                     else:
                         print("The opps block yo path, you cooked, blud")
@@ -654,16 +667,20 @@ def fight(enemies: list[Enemy]):
                         player_attack(player_weapons[(chosen_attack-1)], enemies[0])
             elif chosen_action == 3:
                 if player_max_energy != player_energy:
-                    print(f"{regain_energy()}")
+                    print(f"{regain_energy(0)}")
                 else:
                     print("You're already at max energy")
                     time.sleep(1.5)
                     continue
             elif chosen_action == 4 and len(item_inventory) > 0:
                 for i,item in enumerate(item_inventory):
-                    print(f"[{i+1}]: Use {item}")
+                    print(f"[{i+1}]: Use {item.name}")
                 item_choice = int(input("Choose an item to use:"))
-                item_inventory[item_choice - 1].use()
+                try:
+                    item_inventory[item_choice - 1].use()
+                except IndexError:
+                    print("Not an available action")
+                    continue
             else:
                 print("That's not an available action, try again.")
                 continue
@@ -687,17 +704,16 @@ def fight(enemies: list[Enemy]):
 
 def end_fight(health):
     global player_max_health
-
+    if health == player_max_health:
+        print("\nYou made it out unscathed!")
+    elif health >= player_max_health / 2:
+        print("\nYou made it out with a couple scratches...")
+    elif health >= player_max_health / 4:
+        print("\nYou barely made it out...")
+    else:
+        print("\nYou barely made it to the exit, let alone lived...")
     test_for_level_up()
     choose_path()
-    if health == player_max_health:
-        print("\nYou made it out unscathed!\n")
-    elif health >= player_max_health / 2:
-        print("\nYou made it out with a couple scratches...\n")
-    elif health >= player_max_health / 4:
-        print("\nYou barely made it out...\n")
-    else:
-        print("\nYou barely made it to the exit, let alone lived...\n")
 
     time.sleep(1.5)
 #--------------------------------------------------------------------------------------#
@@ -744,15 +760,17 @@ def player_attack(PlayerAttack, Enemy):
 
     for target in targets:
         for i in range(0,hits):
-            if target.health > 0:
-                for keyword in PlayerAttack.keywords:
-                    match keyword:
-                        case "burn":
-                            fire.apply(target)
-                #Damage Target
-                target.damage(int(PlayerAttack.damage * player_damage_multiplier))
-            else:
-                targets.remove(target)
+            if target.health <= 0:
+                break
+            for keyword in PlayerAttack.keywords:
+                match keyword:
+                    case "burn":
+                        fire.apply(target)
+            # Damage Target
+            time.sleep(.05)
+            target.damage(int(PlayerAttack.damage * player_damage_multiplier))
+        if target.health <= 0:
+            targets.remove(target)
     time.sleep(1.5)
 
 #-----------------------------------------------------------------------------------#
@@ -854,7 +872,9 @@ def increase_strength(amount):
         print(f"⏏️ Your Strength raised from 💢[{player_strength - amount}] to 💢[{player_strength}]")
     else:
         print(f"⏏️⏏️ Eureka! Your Strength raised from 💢[{(player_strength - amount)}] to 💢[{player_strength}]")
-
+    if player_max_weapons - weapon_increase >=1:
+        time.sleep(1)
+        print("\nYou are now strong enough to carry more weapons!")
 
 def increase_dexterity(amount):
     global player_dexterity
@@ -952,7 +972,7 @@ def game_over():
 
     print(f"⚰️ YOU DIED. \n"
           f"---- STATS ----\n"
-          f"\nLevel {player_level})\n"
+          f"\nLevel {player_level}\n"
           f"Earned {stat_gold_earned} gold\n"
           f"Explored {stat_rooms_explored} rooms\n"
           f"Dealt {stat_damage_dealt} damage\n"
