@@ -38,8 +38,6 @@ player_max_energy = 10
 player_energy = player_max_energy
 player_stunned = False
 player_active_debuffs = []
-enemy_active_debuffs = []
-
 
 #-----------------------------------------------------------------------------------
 
@@ -67,6 +65,8 @@ class Enemy:
         self.armor = armor
         self.dodge = dodge
         self.keywords = keywords
+
+    enemy_debuffs = []
 
     def attack(self):
         global player_stunned
@@ -138,6 +138,8 @@ class Enemy:
 
         if self.health <= 0:
             self.die()
+
+        return result
 
         time.sleep(.05)
 
@@ -250,10 +252,15 @@ class Debuff:
         global player_health
         if target == "player":
             player_health -= damage
-            print(f"{self.icon} You take {damage} damage from {debuff.name}.")
+            print(f"{self.icon} You take {damage} damage from {debuff.name}. [❤️{player_health}/{player_max_health}]")
+            if player_health <= 0:
+                game_over()
+
         else:
             target.health -= damage
-            print(f"{self.icon} The {target.name} takes {damage} damage from {self.name}.")
+            print(f"{self.icon} The {target.name} takes {damage} damage from {self.name}. [❤️{target.health}/{target.max_health}]")
+            if target.health <= 0:
+                target.die()
     def apply_weakness(self,target, reduction_percent, debuff):
         global player_damage_multiplier
         if debuff.turns_left == debuff.duration:
@@ -265,16 +272,24 @@ class Debuff:
                 print(f"The {target.name}'s damage output is reduced by [{reduction_percent * 100}%] from {debuff.name}.")
     @staticmethod
     def manage_debuff(target, debuff, debuff_list):
+        global debuffs
+        reapply = False
+
         for active_debuff in debuff_list:
             if active_debuff.name == debuff.name:
-                active_debuff.turns_left = active_debuff.duration
-                return
+                #Reapply debuff
+                debuff.turns_left = active_debuff.duration
+                print(f"{debuff.icon} The {target.name} had its {debuff.name} refreshed.")
+                reapply = True
+        #Apply debuff
+        if reapply == False:
+            print(f"{debuff.icon} The {target.name} was inflicted with {debuff.name}!")
             debuff_list.append(debuff)
     @staticmethod
     def process_debuffs(debuff_list, target):
         expired_debuffs = []
         for debuff in debuff_list:
-            if debuff.apply(target):
+            if debuff.apply(target) == True:
                 expired_debuffs.append(debuff)
         for debuff in expired_debuffs:
             debuff_list.remove(debuff)
@@ -534,7 +549,7 @@ gun = PlayerAttack("Gun", "You unload your clip...", 2, 8, ["7x_strike"])
 boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 3, 1, [])
 spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [])
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 9, ["burn","splash","aimless"])
-torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",1,3,["burn"])
+torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,3,["burn"])
 r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,6,["splash","aimless"])
 weapons = [shortsword,iron_battleaxe,dagger,stick,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe]
 
@@ -547,6 +562,9 @@ loot_weapons = [dagger,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_sc
 #========================================DEBUFFS==========================================#
 fire = Debuff("Fire", "🔥", "Burning!!!", 4, "DOT", 1)
 fentanyl = Debuff("Fentanyl", "🤍","1kg Fent", 10, "Weakness", .5)
+
+debuffs = [fire,fentanyl]
+
     #FOOLS TUTORIAL: aPPLYTING EFFECTS
         # effect.apply(target or "player")     -player must be a string because there is no player class
         #fire.apply("player")
@@ -667,7 +685,6 @@ def fight(enemies: list[Enemy]):
     global rooms
     global item_inventory
     global player_active_debuffs
-    global enemy_active_debuffs
     print("\nIt's time to fight\n"
           "You're facing...")
     for i in range(0,len(enemies)):
@@ -767,11 +784,10 @@ def fight(enemies: list[Enemy]):
                 print("\n------------------- Enemy Turn -------------------\n")
         else: #Enemy Turn
             for enemy in enemies:
-                Debuff.process_debuffs(enemy_active_debuffs, enemy)
+                Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
                 if enemy.health > 0:
                     enemy.attack()
-                else:
-                    enemies.remove(enemy)
+
             player_turn = True
 
             time.sleep(1)
@@ -841,13 +857,13 @@ def player_attack(PlayerAttack, Enemy):
             time.sleep(.05)
             result = target.damage(int(PlayerAttack.damage * player_damage_multiplier))
             if result == "hit":
-                print(result)
                 for keyword in PlayerAttack.keywords:
                     match keyword:
                         case "burn":
-                            Debuff.manage_debuff(target, fire, enemy_active_debuffs)
+                            Debuff.manage_debuff(target, fire, target.enemy_debuffs)
         if target.health <= 0:
             targets.remove(target)
+
     time.sleep(1.5)
 
 #-----------------------------------------------------------------------------------#
