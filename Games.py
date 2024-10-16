@@ -3,6 +3,7 @@ import time
 import random
 from ast import Index
 from random import randint
+from time import sleep
 from turtledemo.forest import randomize
 
 #-----------------------------------------------------------------------------------#
@@ -54,7 +55,7 @@ depth = 0
 
 
 class Enemy:
-    def __init__(self, name, size, health, armor, dodge, attacks, average_gold, average_xp, keywords):
+    def __init__(self, name, size, health, armor, dodge, attacks, average_gold, average_xp, keywords, enemy_debuffs):
         self.name = name
         self.size = size
         self.health = health
@@ -65,8 +66,8 @@ class Enemy:
         self.armor = armor
         self.dodge = dodge
         self.keywords = keywords
+        self.enemy_debuffs = []
 
-    enemy_debuffs = []
 
     def attack(self):
         global player_stunned
@@ -150,6 +151,7 @@ class Enemy:
         global stat_enemies_killed
 
         stat_enemies_killed+=1
+        self.enemy_debuffs = []
 
         reward_gold = int(self.average_gold * random.uniform(0.3, 1.7))
         reward_xp = int(self.average_xp * random.uniform(0.7, 1.3))
@@ -200,12 +202,12 @@ class Room:
 
         match self.name:
             case "combat":
-                add_active_enemies(1, 2)
+                add_active_enemies(1, 10)
                 player_turn = True
                 print("You turn a corner and are faced with a small group of foes...")
                 fight(active_enemies)
             case "shop":
-                print("You enter a shop. The shopkeeper grumbles something about 'Those damned Goblins and their large noses stealing all my gold...'")
+                print("You enter a shop. The shopkeeper grumbles something about 'Those damned Goblins...'")
                 open_shop()
                 choose_path()
             case "elite_combat":
@@ -242,6 +244,7 @@ class Debuff:
         self.effect_value = effect_value
     def apply(self, target):
         if self.turns_left > 0:
+            self.turns_left -= 1
             match self.effect_type:
                 case "DOT":
                     self.damage_over_time(target, self.effect_value, self)
@@ -250,7 +253,7 @@ class Debuff:
         return self.turns_left <= 0
     def damage_over_time(self,target, damage, debuff):
         global player_health
-        if target == "player":
+        if target == debuff:
             player_health -= damage
             print(f"{self.icon} You take {damage} damage from {debuff.name}. [❤️{player_health}/{player_max_health}]")
             if player_health <= 0:
@@ -273,23 +276,38 @@ class Debuff:
     @staticmethod
     def manage_debuff(target, debuff, debuff_list):
         global debuffs
+
         reapply = False
+
+        new_debuff = Debuff(
+            debuff.name,
+            debuff.icon,
+            debuff.description,
+            debuff.duration,
+            debuff.effect_type,
+            debuff.effect_value
+
+        )
+
+        print("Manage Debuffs" + target.name)
 
         for active_debuff in debuff_list:
             if active_debuff.name == debuff.name:
                 #Reapply debuff
-                debuff.turns_left = active_debuff.duration
+                active_debuff.turns_left = active_debuff.duration
                 print(f"{debuff.icon} The {target.name} had its {debuff.name} refreshed.")
                 reapply = True
         #Apply debuff
         if reapply == False:
             print(f"{debuff.icon} The {target.name} was inflicted with {debuff.name}!")
-            debuff_list.append(debuff)
+            debuff_list.append(new_debuff)
+
     @staticmethod
     def process_debuffs(debuff_list, target):
+
         expired_debuffs = []
         for debuff in debuff_list:
-            if debuff.apply(target) == True:
+            if debuff.apply(target):
                 expired_debuffs.append(debuff)
         for debuff in expired_debuffs:
             debuff_list.remove(debuff)
@@ -323,13 +341,13 @@ energy_potion = Item("Energy Potion", "Restores a small amount of energy.", "ene
 items = [health_potion, large_health_potion, enormous_health_potion, energy_potion]
 
 #------------------------------------Rooms---------------------------------------------#
-combat_room = Room("🔹 A room filled with the chatters and growls of enemies.", "combat", .5, "You stumble into another room full of enemies!")
-shop_room = Room("🔹 A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
-elite_room = Room("🔹 A door with ominous shadows visible through the light peeking below, labelled 'KEEP OUT!'", "elite_combat", .2, "You stumbled into a massively dangerous room!")
-rest_room = Room("🔹 A clear pathway which appears safe for resting.", "rest", .05, "You stumble into a calm, peaceful room...")
-loot_room = Room("🔹 A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
-encounter_room = Room("🔹 A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
-boss_room = Room("🔷 A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
+combat_room = Room("♢ A path with the chatters and growls of enemies emanating from within.", "combat", .5, "You stumble into another room full of enemies!")
+shop_room = Room("♢ A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
+elite_room = Room("♢ A heavily fortified door with ominous shadows visible in the light peeking through below.", "elite_combat", .2, "You stumbled into a massively dangerous room!")
+rest_room = Room("♢ A quiet, clear pathway which appears safe for resting.", "rest", .1, "You stumble into a calm, peaceful room...")
+loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
+encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
+boss_room = Room("⛋ A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
 rooms = [combat_room, shop_room, elite_room, rest_room, loot_room, encounter_room, boss_room]
 
@@ -486,7 +504,8 @@ def add_active_enemies(minenemies,maxenemies):
             base_enemy.attacks,
             base_enemy.average_gold,
             base_enemy.average_xp,
-            base_enemy.keywords
+            base_enemy.keywords,
+            base_enemy.enemy_debuffs
             )
 
         active_enemies.append(new_enemy)
@@ -526,15 +545,15 @@ enemy_attacks = [slomp, stab, d_slash, body_slam, d_rage, expl_cask, b_roll, scr
 #=========================================================================================#
 
 #=====================================ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,5,[])
-skele = Enemy("🔺Scary Skeleton", 1, 7,2, 0.05,[stab,d_rage],1,10,[])
-slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[])
-grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],20,25,[])
-living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[])
-clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[])
-wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.33, [scream],0,12,[])
-lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[])
-rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[])
+goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,5,[], [])
+skele = Enemy("🔺Scary Skeleton", 1, 7,2, 0.05,[stab,d_rage],1,10,[], [])
+slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[], [])
+grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],20,25,[], [])
+living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[], [])
+clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[], [])
+wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.33, [scream],0,12,[], [])
+lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[], [])
+rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[], [])
 
 enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp,lost_serf,rob_goblin]
 #===================================================================================#
@@ -601,7 +620,7 @@ def damage_player(amount):
         stat_damage_avoided += int(amount)
     else:
         player_health -= damage_taken
-        print(f"💔 You take {damage_taken} damage. [❤️{player_health}/{player_max_health}]")
+        print(f"\n💔 You take {damage_taken} damage. [❤️{player_health}/{player_max_health}]")
         stat_damage_avoided += int(amount - damage_taken)
         stat_damage_taken += damage_taken
 
@@ -722,7 +741,8 @@ def fight(enemies: list[Enemy]):
             if chosen_action == 1: #----------Run away action
                 if player_energy >= math.floor(player_max_energy/10):
                     print(f"-⚡️{math.floor(player_max_energy / 10)}")
-                    print("You pee your pants a little and sprint towards the first escape you see")
+                    print("You pee your pants a little and sprint towards the first escape you see...")
+                    time.sleep(1.0)
                     player_energy -= math.floor(player_max_energy / 10)
                     if random.random() <.65:
                         active_enemies = []
@@ -784,7 +804,8 @@ def fight(enemies: list[Enemy]):
                 print("\n------------------- Enemy Turn -------------------\n")
         else: #Enemy Turn
             for enemy in enemies:
-                Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
+                if len(enemy.enemy_debuffs) > 0:
+                    Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
                 if enemy.health > 0:
                     enemy.attack()
 
@@ -806,6 +827,8 @@ def end_fight(health):
         print("\nYou barely made it out...")
     else:
         print("\nYou barely made it to the exit, let alone lived...")
+    for enemy in enemies:
+        enemy.enemy_debuffs = []
     test_for_level_up()
     choose_path()
 
@@ -858,9 +881,9 @@ def player_attack(PlayerAttack, Enemy):
             result = target.damage(int(PlayerAttack.damage * player_damage_multiplier))
             if result == "hit":
                 for keyword in PlayerAttack.keywords:
-                    match keyword:
-                        case "burn":
-                            Debuff.manage_debuff(target, fire, target.enemy_debuffs)
+                    if keyword == "burn":
+
+                        Debuff.manage_debuff(target, fire, target.enemy_debuffs)  # Just the intended target
         if target.health <= 0:
             targets.remove(target)
 
@@ -941,7 +964,7 @@ def level_up():
         case 4:
             increase_intelligence(1)
 
-    xp_needed += int(player_level ** 1.5) * 4
+    xp_needed = int(xp_needed ** 1.1)
     player_energy = player_max_energy
 
 def increase_strength(amount):
@@ -1034,7 +1057,7 @@ def see_stats():
     global xp
     global xp_needed
     divisor = xp_needed/10
-    xp_progress = int(xp // divisor)
+    xp_progress = int(xp / divisor)
     print(f"---- STATS ----\n"
         f"\nCurrent Level: ⭐ {player_level} ⭐\n"
         f"Strength: 💢{player_strength}\n"
@@ -1050,7 +1073,7 @@ def see_stats():
         f"Dodge Chance: 💨{(player_dodge*100):.1f}%\n"
         f"Crit Chance: 🎯{(player_crit*100):.1f}%\n"
         f"XP: 💠{xp}/{xp_needed}\n")
-    for xp in range(0,xp_progress):
+    for gem in range(0,xp_progress):
         print("💠",end="")
     for bar in range(0,10-xp_progress):
         print("- ",end="")
