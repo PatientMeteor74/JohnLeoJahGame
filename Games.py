@@ -40,6 +40,7 @@ player_energy = player_max_energy
 player_stunned = False
 player_active_debuffs = []
 
+reward_due = False
 #-----------------------------------------------------------------------------------
 
 stat_gold_earned = 0
@@ -194,7 +195,7 @@ class Room:
         global active_enemies
         global stat_rooms_explored
         global room_number
-
+        global reward_due
         room_number += 1
         stat_rooms_explored += 1
 
@@ -213,6 +214,7 @@ class Room:
             case "elite_combat":
                 add_active_enemies(3, 4)
                 player_turn = True
+                reward_due = True
                 print("You open the door and what you see inside makes your pants a shade browner... ")
                 fight(active_enemies)
             case "rest":
@@ -344,7 +346,7 @@ combat_room = Room("♢ A path with the chatters and growls of enemies emanating
 shop_room = Room("♢ A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
 elite_room = Room("♢ A heavily fortified door with ominous shadows visible in the light peeking through below.", "elite_combat", .2, "You stumbled into a massively dangerous room!")
 rest_room = Room("♢ A quiet, clear pathway which appears safe for resting.", "rest", .1, "You stumble into a calm, peaceful room...")
-loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .9, "You stumble into a room with loot!")
+loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
 encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
 boss_room = Room("⛋ A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
@@ -730,6 +732,7 @@ def fight(enemies: list[Enemy]):
     global rooms
     global item_inventory
     global player_active_debuffs
+    global reward_due
     print("\nIt's time to fight\n"
           "You're facing...")
     for i in range(0,len(enemies)):
@@ -772,6 +775,7 @@ def fight(enemies: list[Enemy]):
                     player_energy -= math.floor(player_max_energy / 10)
                     if random.random() <.65:
                         active_enemies = []
+                        reward_due = False
                         escape_room = rooms[random.randint(0, len(rooms)) - 1]
                         print(escape_room.stumble_message)
                         test_for_level_up()
@@ -845,6 +849,7 @@ def fight(enemies: list[Enemy]):
 
 def end_fight(health):
     global player_max_health
+    global reward_due
     if health == player_max_health:
         print("\nYou made it out unscathed!")
     elif health >= player_max_health / 2:
@@ -855,6 +860,10 @@ def end_fight(health):
         print("\nYou barely made it to the exit, let alone lived...")
     for enemy in enemies:
         enemy.enemy_debuffs = []
+    if reward_due == True and health>0:
+        print("Seems like the enemies were guarding something:")
+        reward_due = False
+        find_loot()
     test_for_level_up()
     choose_path()
 
