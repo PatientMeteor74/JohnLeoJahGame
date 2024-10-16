@@ -202,7 +202,7 @@ class Room:
 
         match self.name:
             case "combat":
-                add_active_enemies(1, 10)
+                add_active_enemies(1, 2)
                 player_turn = True
                 print("You turn a corner and are faced with a small group of foes...")
                 fight(active_enemies)
@@ -221,7 +221,7 @@ class Room:
                 heal_player((player_max_health - player_health) * random.uniform(0.5,1.0))
                 choose_path()
             case "loot":
-                print("You drool a little at the sight: A pile of loot!")
+                print("You drool a little at the sight of:")
                 find_loot()
                 choose_path()
             case "mystery":
@@ -286,7 +286,6 @@ class Debuff:
             debuff.duration,
             debuff.effect_type,
             debuff.effect_value
-
         )
 
         print("Manage Debuffs" + target.name)
@@ -345,7 +344,7 @@ combat_room = Room("♢ A path with the chatters and growls of enemies emanating
 shop_room = Room("♢ A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
 elite_room = Room("♢ A heavily fortified door with ominous shadows visible in the light peeking through below.", "elite_combat", .2, "You stumbled into a massively dangerous room!")
 rest_room = Room("♢ A quiet, clear pathway which appears safe for resting.", "rest", .1, "You stumble into a calm, peaceful room...")
-loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
+loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .9, "You stumble into a room with loot!")
 encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
 boss_room = Room("⛋ A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
@@ -474,13 +473,40 @@ def open_shop():
 
 def find_loot():
     global player_gold
-
-    found_gold = random.randint(5, 45)
-    found_gold += player_level
-
-    print(f"you rummage through the pile and find {gain_gold(found_gold)}")
-
-    add_weapon(loot_weapons[random.randint(0,len(loot_weapons) - 1)])
+    loot = ["pile_gold","treasure_chest"]
+    found_loot = random.choice(loot)
+    time.sleep(.5)
+    for i in range(0, 3):
+        print(".", end="")
+        time.sleep(.5)
+    print("")
+    match found_loot:
+        case "pile_gold":
+            print("A Pile of gold!")
+            time.sleep(1)
+            found_gold = random.randint(15, 35)
+            found_gold += 3*player_level
+            print(f"you collect it all and get  {gain_gold(found_gold)}!")
+        case "treasure_chest":
+            found_gold = random.randint(5, 15)
+            found_gold += 2*player_level
+            print(f"A treasure chest with {gain_gold(found_gold)}!")
+            time.sleep(1)
+            print("you rummage through the gold and find")
+            for i in range(0, 3):
+                print(".", end="")
+                time.sleep(.5)
+            print("\n")
+            if random.random() < .7:
+                print("A weapon!")
+                time.sleep(1)
+                add_weapon(loot_weapons[random.randint(0, len(loot_weapons) - 1)])
+            else:
+                print("More gold!")
+                time.sleep(1)
+                found_gold = random.randint(10, 20)
+                found_gold += 2 * player_level
+                print(f"+{gain_gold(found_gold)}")
 
 #--------------------------------------------------------------------------------------#
 
@@ -591,7 +617,7 @@ debuffs = [fire,fentanyl]
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick, torch]
+player_weapons = [shortsword,iron_battleaxe,stick]
 player_max_weapons = 4.5
 player_accessories = []
 item_inventory = [health_potion]
