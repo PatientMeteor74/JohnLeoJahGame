@@ -419,11 +419,16 @@ class Item:
     def use(self):
         global player_health
         global player_energy
+        global xp_needed
         match self.item_type:
             case "health":
                 heal_player(self.effect_amount)
             case "energy":
                 regain_energy(self.effect_amount)
+            case "experience":
+                gain_xp(self.effect_amount+(xp_needed*.3))
+                if not active_enemies:
+                    test_for_level_up()
         print(f"You used your {self.name}")
         item_inventory.remove(self)
 
@@ -433,8 +438,9 @@ health_potion = Item("Health Potion", "Restores a small amount of health.", "hea
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 35)
 enormous_health_potion = Item("Enormous Health Potion", "Heals you to full health", "health", player_max_health, 80)
 energy_potion = Item("Energy Potion", "Restores a small amount of energy.", "energy", player_max_energy, 30)
+tome_o_knoledge = Item("Tome of Knoledge","Grants you XP","experience",30,45)
 
-items = [health_potion, large_health_potion, enormous_health_potion, energy_potion]
+items = [health_potion, large_health_potion, enormous_health_potion, energy_potion, tome_o_knoledge]
 
 #------------------------------------Rooms---------------------------------------------#
 combat_room = Room("♢ A path with the chatters and growls of enemies emanating from within.", "combat", .5, "You stumble into another room full of enemies!")
@@ -604,16 +610,24 @@ def find_loot():
                 print(".", end="")
                 time.sleep(.5)
             print("\n")
-            if random.random() < .7:
-                print("A weapon!")
-                time.sleep(1)
-                add_weapon(loot_weapons[random.randint(0, len(loot_weapons) - 1)])
-            else:
-                print("More gold!")
-                time.sleep(1)
-                found_gold = random.randint(10, 20)
-                found_gold += 2 * player_level
-                print(f"+{gain_gold(found_gold)}")
+            t_loot_list = ["weapon","gold","tome"]
+            t_loot = random.choice(t_loot_list)
+            match t_loot:
+                case "weapon":
+                    print("A weapon!")
+                    time.sleep(1)
+                    add_weapon(loot_weapons[random.randint(0, len(loot_weapons) - 1)])
+                case "gold":
+                    print("More gold!")
+                    time.sleep(1)
+                    found_gold = random.randint(10, 20)
+                    found_gold += 2 * player_level
+                    print(f"+{gain_gold(found_gold)}")
+                case "tome":
+                    print("A Tome of Knowledge!")
+                    time.sleep(1)
+                    item_inventory.append(tome_o_knoledge)
+
 #--------------------------------------------------------------------------------------#
 
 def mystery_encounter():
@@ -647,7 +661,8 @@ def mystery_encounter():
         case "The Gambler":
             play_bj = False
             print("\nYou find a man waiting at a table surrounded by gold...")
-            print('Dealer: "A game of blackjack?"')
+            print('Dealer: "A game of blackjack?"\n')
+            time.sleep(1.5)
             print(f"Current Gold: 🪙{player_gold}")
             print("[1] Of course! (Bet: 🪙10)\n"
                   "[2] No, thanks")
@@ -655,7 +670,7 @@ def mystery_encounter():
             while True:
                 match choice:
                     case 1:
-                        if player_gold>=0:
+                        if player_gold>0:
                             play_bj = True
                         else:
                             print('Dealer: "No money, no game"')
@@ -727,7 +742,8 @@ def mystery_encounter():
                         time.sleep(2)
                         print("You get bored and decide to leave")
                         break
-                    print("You feel a sudden urge to play again")
+                    print("You feel a sudden urge to play again\n")
+                    time.sleep(1.5)
                     print(f"Current Gold: 🪙{player_gold}")
                     print("[1] Give in.(Bet: 🪙10)\n"
                           "[2] Cower from opportunity")
@@ -930,7 +946,7 @@ def enemy_effect_tick(enemy):
 player_weapons = [shortsword,iron_battleaxe,stick,fw_cannon,torch]
 player_max_weapons = 4.5
 player_accessories = []
-item_inventory = [health_potion]
+item_inventory = [health_potion,tome_o_knoledge]
 
 #----------------------------------Affect-Player-Stats---------------------------------#
 
