@@ -8,7 +8,6 @@ from turtledemo.forest import randomize
 
 #-----------------------------------------------------------------------------------#
 
-
 player_health = 100
 player_max_health = 100
 player_armor = 0
@@ -21,7 +20,7 @@ player_crit_mult = 2.0
 player_vitality = 0
 player_strength = 0
 player_dexterity = 0
-player_intelligence = 19
+player_intelligence = 0
 
 player_level = 1
 xp = 0
@@ -43,6 +42,7 @@ player_stunned = False
 player_active_debuffs = []
 
 reward_due = False
+
 #-----------------------------------------------------------------------------------
 
 stat_gold_earned = 0
@@ -70,7 +70,7 @@ class Enemy:
         self.armor = armor
         self.dodge = dodge
         self.keywords = keywords
-        self.enemy_debuffs = []
+        self.enemy_effects = []
 
 
     def attack(self):
@@ -120,10 +120,10 @@ class Enemy:
                                             print(".", end="")
                                             time.sleep(.66)
                                         print(".\n")
-                            case "daze":
-                                Debuff.manage_debuff("player", daze, player_active_debuffs)
-                            case "burn":
-                                Debuff.manage_debuff("player", fire, player_active_debuffs)
+                            #case "daze":
+                                #Debuff.manage_debuff("player", daze, player_active_debuffs)
+                            #case "burn":
+                                #Debuff.manage_debuff("player", fire, player_active_debuffs)
 
 
 
@@ -278,7 +278,30 @@ class Room:
                 # chance = random.
                 print("BOSS FIGHT WAAAAA!!!")
                 choose_path()
+
 #-----------------------------------------------------------------------------------#
+
+class StatusEffect:
+    def __init__(self, name, icon, description, duration, max_duration, amplifier):
+        self.name = name
+        self.icon = icon
+        self.description = description
+        self.max_duration = max_duration
+        self.amplifier = amplifier
+        self.duration = duration
+        self.target_name = ""
+
+    def tick(self):
+        self.duration -= 1
+        if (self.duration < 1):
+            self.expire_msg()
+
+    def expire_msg(self):
+        print(f"{self.icon} The {self.name} on {self.target_name} has expired.")
+
+#-----------------------------------------------------------------------------------#
+
+"""
 class Debuff:
     def __init__(self, name, icon, description, duration, effect_type, effect_value):
         self.name = name
@@ -381,8 +404,10 @@ class Debuff:
 
                 target_name = target.name
             print(f"{debuff.icon} The {debuff.name} effect on {target_name} has expired.")
+"""
 
 #-----------------------------------------------------------------------------------
+
 class Item:
     def __init__(self, name, description, item_type, effect_amount, value):
         #Item rarity calculated based on value
@@ -401,7 +426,9 @@ class Item:
                 regain_energy(self.effect_amount)
         print(f"You used your {self.name}")
         item_inventory.remove(self)
+
 #---------------------------------Consumables------------------------------------------#
+
 health_potion = Item("Health Potion", "Restores a small amount of health.", "health", 20, 15)
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 35)
 enormous_health_potion = Item("Enormous Health Potion", "Heals you to full health", "health", player_max_health, 80)
@@ -777,14 +804,14 @@ def game_init():
 
 #=====================================ENEMY ATTACKS=======================================#
 slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge...",5, 0, ["daze"])
-stab = EnemyAttack("Stab"," lunges forward to stab you...",3, 0, [])
-d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger...",2, 0, [])
+stab = EnemyAttack("Stab"," lunges forward to stab you...",4, 0, [])
+d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger...",3, 0, [])
 body_slam = EnemyAttack("Body Slam","throws itself toward you with great force...", 3, 0.3, [])
 d_rage = EnemyAttack("Drunken Rage", "attacks you in a drunken rage...",4, .15, [])
 expl_cask = EnemyAttack("Explosive Cask", "throws an explosive cask at you...", 5, .2, [])
 b_roll = EnemyAttack("Barrel Roll", "whirls a cask your feet...", 2, 0, [])
 scream = EnemyAttack("Scream", "screams AAAAAAAAAAA...", 0, 0, ["daze"])
-bite = EnemyAttack("Bite", "attempts to bite you...", 4, 0, [])
+bite = EnemyAttack("Bite", "attempts to bite you...", 2, 0, [])
 s_slam = EnemyAttack("Shovel Slam","tries to smash your head with a shovel...",4,0.3,[])
 poo_throw = EnemyAttack("Poo Throw","throws some poo at you...",0,0,[])
 pick_pock = EnemyAttack("Pick Pocket","lunges for your pockets...",0,0,["steal"])
@@ -838,11 +865,60 @@ loot_weapons = [dagger,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_sc
 
 #=========================================================================================#
 
-#========================================DEBUFFS==========================================#
-fire = Debuff("Fire", "🔥", "burning", 4, "DOT", 1)
-daze = Debuff("Daze", "🌀","dazed", 3, "Weakness", .5)
+burn = StatusEffect("Burn", "🔥", "set ablaze!", 1, 99, 1.0)
+daze = StatusEffect("Daze", "🌀", "dazed!", 2, 99, 1.0)
 
-debuffs = [fire,daze]
+#========================================Debuff Ticking==========================================#
+
+def apply_effect(effect, target_list, target_hp, target_name, effect_duration, effect_amplifier):
+
+    new_effect = StatusEffect(
+        effect.name,
+        effect.icon,
+        effect.description,
+        effect_duration,
+        effect.max_duration,
+        effect_amplifier
+    )
+
+    if target_hp > 0:
+        target_list.append(new_effect)
+        print(f"{effect.icon} The {target_name} was {effect.description}")
+
+def enemy_effect_tick(enemy):
+
+    enemy.damage_multiplier = 1.0
+
+    for active_effect in enemy.enemy_effects:
+
+        match active_effect.name:
+            case "Burn":
+                damage = int(1 * active_effect.amplifier)
+                if enemy.health > 0:
+                    enemy.health -= damage
+                    print(f"{active_effect.icon} The {enemy.name} takes {damage} damage from {active_effect.name}. [❤️{enemy.health}/{enemy.max_health}]")
+                    if enemy.health <= 0:
+                        enemy.die()
+            case "Daze":
+                if active_effect.duration > 1:
+                    enemy.damage_multiplier *= (0.66 ** active_effect.amplifier)
+            case "Strength":
+                if active_effect.duration > 1:
+                    enemy.damage_multiplier *= (1.5 * active_effect.amplifier)
+
+        active_effect.tick()
+        if (active_effect.duration < 1):
+            enemy.enemy_effects.remove(active_effect)
+
+#def player_effect_tick():
+
+
+#============================================DEBUFFS==============================================#
+
+#fire = Debuff("Fire", "🔥", "burning", 4, "DOT", 1)
+#daze = Debuff("Daze", "🌀","dazed", 3, "Weakness", .5)
+
+#debuffs = [fire,daze]
 
     #FOOLS TUTORIAL: aPPLYTING EFFECTS
         # effect.apply(target or "player")     -player must be a string because there is no player class
@@ -851,10 +927,11 @@ debuffs = [fire,daze]
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick,fw_cannon]
+player_weapons = [shortsword,iron_battleaxe,stick,fw_cannon,torch]
 player_max_weapons = 4.5
 player_accessories = []
 item_inventory = [health_potion]
+
 #----------------------------------Affect-Player-Stats---------------------------------#
 
 def damage_player(amount):
@@ -866,7 +943,6 @@ def damage_player(amount):
     result = "hit"
 
     damage_taken = max(0, (amount - (random.randint(0,player_armor))))
-
 
     if random.random() <= player_dodge:
         print(f"💨 You dodge out of the way, unaffected!")
@@ -983,7 +1059,7 @@ def fight(enemies: list[Enemy]):
 
         if player_turn:
 
-            Debuff.process_debuffs(player_active_debuffs, "player")
+            #Debuff.process_debuffs(player_active_debuffs, "player")
             if player_stunned: # Check for if player is stunned
                 print("You are stunned and cannot act this turn!")
                 for i in range(0,3):
@@ -1086,8 +1162,9 @@ def fight(enemies: list[Enemy]):
         else: #Enemy Turn
 
             for enemy in enemies:
-                if len(enemy.enemy_debuffs) > 0:
-                    Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
+                #if len(enemy.enemy_debuffs) > 0:
+                    #Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
+                enemy_effect_tick(enemy)
                 if enemy.health > 0:
                     enemy.attack()
 
@@ -1182,9 +1259,9 @@ def player_attack(PlayerAttack, Enemy):
                 for keyword in PlayerAttack.keywords:
                     match keyword:
                         case "burn":
-                            Debuff.manage_debuff(target, fire, target.enemy_debuffs)  # Just the intended target
+                            apply_effect(burn, target.enemy_effects, target.health, target.name,4,1.0)
                         case "daze":
-                            Debuff.manage_debuff(target, daze, target.enemy_debuffs)  # Just the intended target
+                            apply_effect(daze, target.enemy_effects, target.health, target.name,2,1.0)
         if target.health <= 0:
             targets.remove(target)
 
