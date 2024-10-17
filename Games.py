@@ -14,13 +14,14 @@ player_max_health = 100
 player_armor = 0
 player_dodge = 0.05
 player_damage_multiplier = 1.0
+player_effect_damage_multiplier = 1.0
 player_crit = 0.01
 player_crit_mult = 2.0
 
 player_vitality = 0
 player_strength = 0
 player_dexterity = 0
-player_intelligence = 0
+player_intelligence = 19
 
 player_level = 1
 xp = 0
@@ -33,6 +34,7 @@ delta = 0
 player_turn = False
 
 active_enemies = []
+dead_enemies = []
 player_gold = 0
 
 player_max_energy = 10
@@ -56,10 +58,11 @@ depth = 0
 
 
 class Enemy:
-    def __init__(self, name, size, health, armor, dodge, attacks, average_gold, average_xp, keywords, enemy_debuffs):
+    def __init__(self, name, size, health, armor, dodge, attacks, average_gold, average_xp, keywords):
         self.name = name
         self.size = size
         self.health = health
+        self.damage_multiplier = 1.0
         self.attacks = attacks
         self.average_gold = average_gold
         self.average_xp = average_xp
@@ -72,36 +75,57 @@ class Enemy:
 
     def attack(self):
         global player_stunned
+        global player_active_debuffs
         global player_gold
         hit = True
+
+        hits = 1
+
         time.sleep(0.5)
+
         attack_id = random.randint(0 , (len(self.attacks)-1))
-        print(f"The {self.name} {self.attacks[attack_id].message}")
 
-        result = damage_player(self.attacks[attack_id].damage)
+        if len(self.attacks[attack_id].keywords) > 0:
+            for keyword in self.attacks[attack_id].keywords:
+                match keyword:
+                    case "triple_strike":
+                        hits *= 3
+                    case "double_strike":
+                        hits *= 2
 
-        if result == "dodge" or result == "block":
-            hit = False
-        #Keywords
-        if hit:
-            if len(self.attacks[attack_id].keywords) > 0:
-                for keyword in self.attacks[attack_id].keywords:
-                    match keyword:
-                        case "stun":
-                            if random.random() < .4:
-                                player_stunned = True
-                        case "steal":
-                                time.sleep(1)
-                                if player_gold > 0:
-                                    steal_amt = min(player_gold,random.randint(3, 5))
-                                    player_gold -= steal_amt
-                                    print(f"It grabbed {steal_amt}🪙!")
-                                else:
-                                    print("You felt some grubby fingers touch yo dingaling through yo pocket")
-                                    for i in range(0, 2):
-                                        print(".", end="")
-                                        time.sleep(.66)
-                                    print(".\n")
+        print(f"\nThe {self.name} {self.attacks[attack_id].message}")
+
+        for strike in range(0,hits):
+            result = damage_player(int(self.attacks[attack_id].damage * self.damage_multiplier))
+
+            if result == "dodge" or result == "block":
+                hit = False
+            #Keywords
+            if hit:
+                if len(self.attacks[attack_id].keywords) > 0:
+                    for keyword in self.attacks[attack_id].keywords:
+                        match keyword:
+                            case "stun":
+                                if random.random() < .4:
+                                    player_stunned = True
+                            case "steal":
+                                    time.sleep(1)
+                                    if player_gold > 0:
+                                        steal_amt = min(player_gold,random.randint(3, 5))
+                                        player_gold -= steal_amt
+                                        print(f"It grabbed {steal_amt}🪙!")
+                                    else:
+                                        print("You felt some grubby fingers touch yo dingaling through yo pocket")
+                                        for i in range(0, 2):
+                                            print(".", end="")
+                                            time.sleep(.66)
+                                        print(".\n")
+                            case "daze":
+                                Debuff.manage_debuff("player", daze, player_active_debuffs)
+                            case "burn":
+                                Debuff.manage_debuff("player", fire, player_active_debuffs)
+
+
 
     def damage(self, amount):
         crit = False
@@ -150,6 +174,7 @@ class Enemy:
         global player_gold
         global xp
         global stat_enemies_killed
+        global dead_enemies
 
         stat_enemies_killed+=1
         self.enemy_debuffs = []
@@ -157,20 +182,34 @@ class Enemy:
         reward_gold = int(self.average_gold * random.uniform(0.3, 1.7))
         reward_xp = int(self.average_xp * random.uniform(0.7, 1.3))
 
-        print(f"☠️ It died, giving you {gain_gold(reward_gold)} and {gain_xp(reward_xp)}")
+        print(f"☠️ It died, giving you {gain_gold(reward_gold)} and {gain_xp(reward_xp)}\n")
 
-        active_enemies.remove(self)
+        if len(self.keywords) > 0:
+            for keyword in self.keywords:
+                match keyword:
+                    case "weapon_drop":
+                        add_weapon(loot_weapons[random.randint(0,len(loot_weapons) - 1)])
+
+
+
+        dead_enemies.append(self)
         time.sleep(0.5)
 
 #-----------------------------------------------------------------------------------#
 
 class PlayerAttack:
-    def __init__(self, name, message, damage, energy, keywords):
-        self.name = name
+    def __init__(self, name, message, damage, energy, keywords, rarity):
+        self.name = ""
         self.message = message
         self.damage = damage
         self.energy = energy
         self.keywords = keywords
+        self.rarity = rarity
+
+        for star in range(0,rarity):
+            self.name += "★"
+
+        self.name += f" {name}"
 
 #-----------------------------------------------------------------------------------#
 
@@ -203,8 +242,11 @@ class Room:
 
         match self.name:
             case "combat":
-                add_active_enemies(1, 2)
+                add_active_enemies(1, 3)
+                random.shuffle(active_enemies)
                 player_turn = True
+                if random.random() < .1:
+                    reward_due = True
                 print("You turn a corner and are faced with a small group of foes...")
                 fight(active_enemies)
             case "shop":
@@ -212,7 +254,8 @@ class Room:
                 open_shop()
                 choose_path()
             case "elite_combat":
-                add_active_enemies(3, 4)
+                add_active_enemies(5, 7)
+                random.shuffle(active_enemies)
                 player_turn = True
                 reward_due = True
                 print("You open the door and what you see inside makes your pants a shade browner... ")
@@ -229,6 +272,7 @@ class Room:
             case "mystery":
                 #chance = random.
                 print("You see what was behind the fog...")
+                mystery_encounter()
                 choose_path()
             case "boss":
                 # chance = random.
@@ -244,37 +288,45 @@ class Debuff:
         self.turns_left = duration
         self.effect_type = effect_type
         self.effect_value = effect_value
+
     def apply(self, target):
         if self.turns_left > 0:
-            self.turns_left -= 1
             match self.effect_type:
                 case "DOT":
                     self.damage_over_time(target, self.effect_value, self)
                 case "Weakness":
                     self.apply_weakness(target, self.effect_value, self)
+
+        self.turns_left -= 1
+
         return self.turns_left <= 0
     def damage_over_time(self,target, damage, debuff):
         global player_health
-        if target == debuff:
+        if target == "player":
             player_health -= damage
             print(f"{self.icon} You take {damage} damage from {debuff.name}. [❤️{player_health}/{player_max_health}]")
             if player_health <= 0:
                 game_over()
 
         else:
-            target.health -= damage
-            print(f"{self.icon} The {target.name} takes {damage} damage from {self.name}. [❤️{target.health}/{target.max_health}]")
-            if target.health <= 0:
-                target.die()
+            if target.health > 0:
+                target.health -= damage
+                print(f"{self.icon} The {target.name} takes {damage} damage from {self.name}. [❤️{target.health}/{target.max_health}]")
+                if target.health <= 0:
+                    target.die()
     def apply_weakness(self,target, reduction_percent, debuff):
         global player_damage_multiplier
+        global player_effect_damage_multiplier
+        global player_active_debuffs
+
         if debuff.turns_left == debuff.duration:
             if target == "player":
-                player_damage_multiplier *= reduction_percent
-                print(f"Your damage output is reduced by [{reduction_percent * 100}%] from {self.name}.")
-            else:
-                target.damage *= reduction_percent
-                print(f"The {target.name}'s damage output is reduced by [{reduction_percent * 100}%] from {debuff.name}.")
+                if check_for_debuff(player_active_debuffs, debuff.name) == False:
+                    player_effect_damage_multiplier -= reduction_percent
+                    #print(f"{self.icon} Your damage is weakened by [{reduction_percent * 100}%] from {self.name}.")
+            elif check_for_debuff(target.enemy_debuffs, debuff.name) == False:
+                target.damage_multiplier -= reduction_percent
+                #print(f"{self.icon} The {target.name}'s damage is weakened by [{reduction_percent * 100}%] from {self.name}.")
     @staticmethod
     def manage_debuff(target, debuff, debuff_list):
         global debuffs
@@ -290,21 +342,26 @@ class Debuff:
             debuff.effect_value
         )
 
-        print("Manage Debuffs" + target.name)
-
         for active_debuff in debuff_list:
             if active_debuff.name == debuff.name:
                 #Reapply debuff
                 active_debuff.turns_left = active_debuff.duration
-                print(f"{debuff.icon} The {target.name} had its {debuff.name} refreshed.")
+                if target == "player":
+                    print(f"{debuff.icon} You had your {debuff.name} refreshed!")
+                else:
+                    print(f"{debuff.icon} The {target.name} had its {debuff.name} refreshed.")
                 reapply = True
         #Apply debuff
         if reapply == False:
-            print(f"{debuff.icon} The {target.name} was inflicted with {debuff.name}!")
+            if target == "player":
+                print(f"{debuff.icon} You were inflicted with {debuff.name}!")
+            else:
+                print(f"{debuff.icon} The {target.name} was inflicted with {debuff.name}!")
             debuff_list.append(new_debuff)
 
     @staticmethod
     def process_debuffs(debuff_list, target):
+        global player_effect_damage_multiplier
 
         expired_debuffs = []
         for debuff in debuff_list:
@@ -312,8 +369,19 @@ class Debuff:
                 expired_debuffs.append(debuff)
         for debuff in expired_debuffs:
             debuff_list.remove(debuff)
-            target_name = "you" if target == "player" else target.name
-            print(f"The {debuff.name} effect on {target_name} has expired.")
+            if target == "player":
+                match debuff.effect_type:
+                    case "Weakness":
+                        player_effect_damage_multiplier += debuff.effect_value
+                target_name = "you"
+            else :
+                match debuff.effect_type:
+                    case "Weakness":
+                        target.damage += debuff.effect_value
+
+                target_name = target.name
+            print(f"{debuff.icon} The {debuff.name} effect on {target_name} has expired.")
+
 #-----------------------------------------------------------------------------------
 class Item:
     def __init__(self, name, description, item_type, effect_amount, value):
@@ -345,12 +413,22 @@ items = [health_potion, large_health_potion, enormous_health_potion, energy_poti
 combat_room = Room("♢ A path with the chatters and growls of enemies emanating from within.", "combat", .5, "You stumble into another room full of enemies!")
 shop_room = Room("♢ A well-lit corridor with a sign hanging labelled 'The Shop (NO GOBLINS ALLOWED)'", "shop", .2, "You stumble into a shop!")
 elite_room = Room("♢ A heavily fortified door with ominous shadows visible in the light peeking through below.", "elite_combat", .2, "You stumbled into a massively dangerous room!")
-rest_room = Room("♢ A quiet, clear pathway which appears safe for resting.", "rest", .1, "You stumble into a calm, peaceful room...")
+rest_room = Room("♢ An abandoned campsite which appears safe for resting.", "rest", .1, "You stumble into an abandoned campsite...")
 loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
 encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
 boss_room = Room("⛋ A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
 rooms = [combat_room, shop_room, elite_room, rest_room, loot_room, encounter_room, boss_room]
+
+#-------------------------------------Check Debuffs------------------------------------#
+
+def check_for_debuff(debuff_list, debuff_name):
+    for debuff in debuff_list:
+        if debuff.name == debuff_name:
+            print("return true")
+            return True
+    print("return false")
+    return False
 
 #-------------------------------------Room Logic------------------------------------#
 
@@ -440,7 +518,7 @@ def open_shop():
         for i,item in enumerate(shop_items):
             print(f"[{i + 1}]: {item.name} (🪙{item.value})")
         for j,weapon in enumerate(shop_weapons):
-            print(f"[{len(shop_items) + j + 1}]: {weapon.name} (🪙{int(random.uniform(1,1) * ((weapon.damage - 1 / (weapon.energy + 1)) * 20))})")
+            print(f"[{len(shop_items) + j + 1}]: {weapon.name} (🪙{int((weapon.rarity ** 1.7) * 15)})")
         print(f"[{len(shop_items) + len(shop_weapons) + 1}]: Leave the shop")
         try:
             choice = int(input("\nWhaddya wanna buy? Make it quick, bub.")) - 1
@@ -456,7 +534,7 @@ def open_shop():
             elif len(shop_items) <= choice < len(shop_items) + len(shop_weapons):
                 weapon_choice = choice - len(shop_items)
                 selected_weapon = shop_weapons[weapon_choice]
-                weapon_price = int(random.uniform(1,1) * (selected_weapon.damage - 1 / (selected_weapon.energy + 1)) * 20)
+                weapon_price = int((selected_weapon.rarity ** 1.7) * 15)
                 if player_gold >= weapon_price:
                     player_gold -= weapon_price
                     add_weapon(selected_weapon)
@@ -509,20 +587,163 @@ def find_loot():
                 found_gold = random.randint(10, 20)
                 found_gold += 2 * player_level
                 print(f"+{gain_gold(found_gold)}")
+#--------------------------------------------------------------------------------------#
+
+def mystery_encounter():
+    global player_gold
+    encounters = ["Freaky Vampire", "Cursed Library", "Ancient Gym", "The Gambler", "Molten Gold", ]
+    encounter = "The Gambler"
+    #encounter = random.choice(encounters)
+    def create_deck():
+        deck = [2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10, 11] * 4  # 4 suits
+        random.shuffle(deck)
+        return deck
+
+    def calculate_hand(hand):
+        hand = [int(card) for card in hand if isinstance(card, int) or card.isdigit()]
+        total = sum(hand)
+        if total > 21 and 11 in hand:
+            hand[hand.index(11)] = 1  # Treat an Ace as 1 if over 21
+            total = sum(hand)
+        return total
+
+    def display_hand(player, hand):
+        print(f"{player} hand: {hand} (total: {calculate_hand(hand)})")
+        time.sleep(1)
+    match encounter:
+        case "Freaky Vampire":
+            print("You find a freaky vampire...")
+        case "Cursed Library":
+            print("You find a cursed library...")
+        case "Gym":
+            print("You find an abandoned gym...")
+        case "The Gambler":
+            play_bj = False
+            print("\nYou find a man waiting at a table surrounded by gold...")
+            print('Dealer: "A game of blackjack?"')
+            print(f"Current Gold: 🪙{player_gold}")
+            print("[1] Of course! (Bet: 🪙10)\n"
+                  "[2] No, thanks")
+            choice = int(input("Choose option:"))
+            while True:
+                match choice:
+                    case 1:
+                        if player_gold>=0:
+                            play_bj = True
+                        else:
+                            print('Dealer: "No money, no game"')
+                            break
+                    case 2:
+                        print('"Dealer: Youre missing out..."')
+                        break
+                    case _:
+                        print("Enter 1 or 2")
+                        continue
+                # Player turn
+                if play_bj:
+                    play_bj = False
+                    player_gold -= 10
+                    deck = create_deck()
+                    player_hand = [deck.pop(), deck.pop()]
+                    dealer_hand = [deck.pop(), deck.pop()]
+
+                    display_hand("You", player_hand)
+                    time.sleep(1)
+                    display_hand("Dealer", [dealer_hand[0], "?"])
+                    time.sleep(1)
+                    while calculate_hand(player_hand) < 21:
+                        action = int(input("[1] Hit \n"
+                                       "[2] Stand"))
+                        if action == 1:
+                            player_hand.append(deck.pop())
+                            time.sleep(1)
+                            display_hand("You", player_hand)
+                            if calculate_hand(player_hand) > 21:
+                                print("You busted! Dealer wins.")
+                                print('Dealer: (counting his pile of coins) "Better luck next time"')
+                        elif action == 2:
+                            break
+                        else:
+                            print("Not available action")
+                    # Dealer turn
+                    while calculate_hand(dealer_hand) < 17 and calculate_hand(player_hand)<22:
+                        dealer_hand.append(deck.pop())
+
+                    display_hand("Dealer", dealer_hand)
+
+                    # Determine winner
+                    player_total = calculate_hand(player_hand)
+                    dealer_total = calculate_hand(dealer_hand)
+
+                    if dealer_total > 21:
+                        time.sleep(1)
+                        print("Dealer busted! You win.")
+                        print(f'Dealer: "Here is you prize..." +{gain_gold(20)}')
+                    elif player_total > dealer_total and player_total<22:
+                        time.sleep(1)
+                        print("You win!")
+                        print(f'Dealer: "Here is you prize..." +{gain_gold(20)}')
+                    elif player_total == dealer_total:
+                        time.sleep(1)
+                        print("It's a tie!")
+                        print(f'Dealer: "Here is your money back..." +{gain_gold(10)}')
+                    else:
+                        time.sleep(1)
+                        print("Dealer wins.")
+                        print('Dealer: (counting his pile of coins) "Better luck next time"')
+                    time.sleep(1)
+                    if random.random()<.15:
+                        print('Dealer:(Starts counting massive pile of coins)')
+                        for i in range(1,4):
+                            time.sleep(1)
+                            print(f'Dealer:"{i}..."')
+                        time.sleep(2)
+                        print("You get bored and decide to leave")
+                        break
+                    print("You feel a sudden urge to play again")
+                    print(f"Current Gold: 🪙{player_gold}")
+                    print("[1] Give in.(Bet: 🪙10)\n"
+                          "[2] Cower from opportunity")
+                    choice1 = int(input("Choose option:"))
+                    match choice1:
+                        case 1:
+                            continue
+                        case 2:
+                            print('Dealer: "Youre missing out..."')
+                            time.sleep(1)
+                            break
+                        case _:
+                            print("You stumble on your words\n"
+                                  'Dealer: "Again it is..."')
+
+
 
 #--------------------------------------------------------------------------------------#
 
-def add_active_enemies(minenemies,maxenemies):
+def add_active_enemies(min_weight,max_weight):
     global depth
     global enemies
 
+    total_weight = random.randint(min_weight,max_weight)
+
     large_enemy_favor = 1 + (depth * 0.25)
 
-    weights = [min(1, (1/(enemy.size/large_enemy_favor))) for enemy in enemies]
-    normalized_weights = [weight / sum(weights) for weight in weights]
-    for i in range(0, random.randint(minenemies, maxenemies)):
-        chosen_enemy = random.choices(enemies, weights=normalized_weights, k=1)
+    while total_weight > 0:
+
+        affordable_enemies = []
+
+        for enemy in enemies:
+            if enemy.size <= total_weight:
+                affordable_enemies.append(enemy)
+
+        weights = [min(1, (1 / (enemy.size / large_enemy_favor))) for enemy in affordable_enemies]
+        normalized_weights = [weight / sum(weights) for weight in weights]
+
+        chosen_enemy = random.choices(affordable_enemies, weights=normalized_weights, k=1)
         base_enemy = chosen_enemy[0]
+
+        total_weight -= base_enemy.size
+
         new_enemy = Enemy(
             base_enemy.name,
             base_enemy.size,
@@ -533,7 +754,6 @@ def add_active_enemies(minenemies,maxenemies):
             base_enemy.average_gold,
             base_enemy.average_xp,
             base_enemy.keywords,
-            base_enemy.enemy_debuffs
             )
 
         active_enemies.append(new_enemy)
@@ -556,61 +776,73 @@ def game_init():
 
 
 #=====================================ENEMY ATTACKS=======================================#
-slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge...",5, .1, [])
+slomp = EnemyAttack("Slomp Attack", "attempts to smash you with its gludge...",5, 0, ["daze"])
 stab = EnemyAttack("Stab"," lunges forward to stab you...",3, 0, [])
 d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger...",2, 0, [])
-body_slam = EnemyAttack("Body Slam","throws itself toward you with great force...", 3, .3, ["stun"])
+body_slam = EnemyAttack("Body Slam","throws itself toward you with great force...", 3, 0.3, [])
 d_rage = EnemyAttack("Drunken Rage", "attacks you in a drunken rage...",4, .15, [])
 expl_cask = EnemyAttack("Explosive Cask", "throws an explosive cask at you...", 5, .2, [])
 b_roll = EnemyAttack("Barrel Roll", "whirls a cask your feet...", 2, 0, [])
-scream = EnemyAttack("Scream", "screams AAAAAAAAAAA...", 1, 0, ["stun"])
+scream = EnemyAttack("Scream", "screams AAAAAAAAAAA...", 0, 0, ["daze"])
 bite = EnemyAttack("Bite", "attempts to bite you...", 4, 0, [])
-s_slam = EnemyAttack("Shovel Slam","tries to smash your head with a shovel...",4,.1,["stun"])
+s_slam = EnemyAttack("Shovel Slam","tries to smash your head with a shovel...",4,0.3,[])
 poo_throw = EnemyAttack("Poo Throw","throws some poo at you...",0,0,[])
 pick_pock = EnemyAttack("Pick Pocket","lunges for your pockets...",0,0,["steal"])
+smash = EnemyAttack("Smash","prepares to slam down on you...",5,0,[])
+dice = EnemyAttack("Dice","prepares to chop you to pieces...",2,0,["triple_strike"])
+slice = EnemyAttack("Slice","attempts to slice into you..",3,0,[])
+f_blast = EnemyAttack("Fire Blast","unleashes a burst of fire towards you..",2,0,["burn"])
+m_blast = EnemyAttack("Magic Blast","blasts a wave of magical energy at you..",4,0,[])
 
-enemy_attacks = [slomp, stab, d_slash, body_slam, d_rage, expl_cask, b_roll, scream, bite,s_slam,poo_throw,pick_pock]
+enemy_attacks = [slomp, stab, d_slash, body_slam, d_rage, expl_cask, b_roll, scream, bite,s_slam,poo_throw,pick_pock,smash, dice, slice, f_blast, m_blast]
 #=========================================================================================#
 
 #=====================================ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,5,[], [])
-skele = Enemy("🔺Scary Skeleton", 1, 7,2, 0.05,[stab,d_rage],1,10,[], [])
-slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[], [])
-grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],20,25,[], [])
-living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[], [])
-clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[], [])
-wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.33, [scream],0,12,[], [])
-lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[], [])
-rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[], [])
+goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,8,[])
+skele = Enemy("🔺Skeleton Solider", 1, 7,2, 0.05,[stab,d_rage],1,12,[])
+slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[])
+grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,d_rage],20,25,[])
+living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[])
+clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[])
+wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.4, [scream,m_blast],0,12,[])
+lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[d_rage,s_slam,poo_throw],8,3,[])
+rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[])
+ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 50,1,0,[stab,smash, m_blast],25,40,[])
+angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 3, 3, 0.25,[slice, dice], 0,10,["weapon_drop"])
+goblin_mech = Enemy("🔺Goblin Mech", 3, 22, 4, 0,[f_blast, smash], 20,15,[])
 
-enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp,lost_serf,rob_goblin]
+enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp,lost_serf,rob_goblin,ghoulem,angry_weapons,goblin_mech]
 #===================================================================================#
 
 #=====================================PLAYER ATTACKS======================================#
-shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 4, 2, [])
-iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 7, 5, [])
-dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 2, 2, ["double_strike"])
-stick = PlayerAttack("Whacking Stick", "You whack that fella head smoove off...", 1, 0, [])
-anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"])
-gun = PlayerAttack("Gun", "You unload your clip...", 2, 8, ["7x_strike"])
-boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 3, 1, [])
-spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [])
-f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 9, ["burn","splash","aimless"])
-torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,3,["burn"])
-r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,6,["splash","aimless"])
-weapons = [shortsword,iron_battleaxe,dagger,stick,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe]
+shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 4, 2, [], 1)
+iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 7, 5, [], 1)
+dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 2, 2, ["double_strike"], 1)
+stick = PlayerAttack("Whacking Stick", "You whack that fella head smoove off...", 1, 0, [], 1)
+anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"], 2)
+gun = PlayerAttack("Gun", "You unload your clip...", 2, 8, ["7x_strike"], 3)
+boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 3, 1, [], 1)
+spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [], 1)
+f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 9, ["burn","splash","aimless"], 2)
+torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,3,["burn"], 1)
+r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,6,["splash","aimless"], 3)
+tp_hammer = PlayerAttack("1000LB Hammer","With tremendous effort, you wildly swing the immense hammer...",22,14,["aimless"], 3)
+light_staff = PlayerAttack("Light Staff", "You produce a a blinding light ...",0,6,["daze","splash","aimless"], 3)
+fw_cannon = PlayerAttack("Firework Cannon", "You rapidly shoot off a firework ...",1,2,["daze"], 2)
+
+weapons = [shortsword,iron_battleaxe,dagger,stick,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer]
 
 #=========================================================================================#
 
-loot_weapons = [dagger,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe]
+loot_weapons = [dagger,anvil_staff,gun,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer]
 
 #=========================================================================================#
 
 #========================================DEBUFFS==========================================#
-fire = Debuff("Fire", "🔥", "Burning!!!", 4, "DOT", 1)
-fentanyl = Debuff("Fentanyl", "🤍","1kg Fent", 10, "Weakness", .5)
+fire = Debuff("Fire", "🔥", "burning", 4, "DOT", 1)
+daze = Debuff("Daze", "🌀","dazed", 3, "Weakness", .5)
 
-debuffs = [fire,fentanyl]
+debuffs = [fire,daze]
 
     #FOOLS TUTORIAL: aPPLYTING EFFECTS
         # effect.apply(target or "player")     -player must be a string because there is no player class
@@ -619,7 +851,7 @@ debuffs = [fire,fentanyl]
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick]
+player_weapons = [shortsword,iron_battleaxe,stick,fw_cannon]
 player_max_weapons = 4.5
 player_accessories = []
 item_inventory = [health_potion]
@@ -648,7 +880,7 @@ def damage_player(amount):
         stat_damage_avoided += int(amount)
     else:
         player_health -= damage_taken
-        print(f"\n💔 You take {damage_taken} damage. [❤️{player_health}/{player_max_health}]")
+        print(f"💔 You take {damage_taken} damage. [❤️{player_health}/{player_max_health}]")
         stat_damage_avoided += int(amount - damage_taken)
         stat_damage_taken += damage_taken
 
@@ -685,7 +917,7 @@ def regain_energy(amount):
 
     inspiration = 1
     if random.random() < 0.05 + (player_intelligence * 0.05):
-        inspiration = 2
+        inspiration = 99
     gain=0
     if amount>0:
         gain = amount
@@ -714,31 +946,43 @@ def gain_gold(amount):
 
 def gain_xp(amount):
     global xp
-    gained_amount = int(amount)
-    xp += gained_amount
-    return f"💠{gained_amount}"
 
+    inspiration = 1
+    if random.random() < 0.05 + (player_intelligence * 0.025):
+        inspiration = 2
+
+
+    gained_amount = int(amount) * inspiration
+    xp += gained_amount
+    if inspiration == 1:
+        return f"💠{gained_amount}"
+    else:
+        return f"💠{int(gained_amount/2)} and eureka! An additional 💠{int(gained_amount/2)}"
 #---------------------------------Fighting-Enemy-------------------------------------#
-combat_actions = ["Run Away", "Attack", "Rest", "Use Item"]
+combat_actions = ["Attack", "Rest", "Run Away", "Use Item"]
 def fight(enemies: list[Enemy]):
     global player_turn
     global combat_actions
     global player_attacks
     global enemy_attacks
     global active_enemies
+    global dead_enemies
     global player_stunned
     global player_max_energy
     global player_energy
     global rooms
     global item_inventory
     global player_active_debuffs
+    global player_effect_damage_multiplier
     global reward_due
     print("\nIt's time to fight\n"
           "You're facing...")
     for i in range(0,len(enemies)):
         print(f"[ A {enemies[i].name} with ❤️{enemies[i].health} ]")
-    while len(enemies) > 0 and player_health > 0:
+    while dispose_corpses(enemies) > 0 and player_health > 0:
+
         if player_turn:
+
             Debuff.process_debuffs(player_active_debuffs, "player")
             if player_stunned: # Check for if player is stunned
                 print("You are stunned and cannot act this turn!")
@@ -763,11 +1007,16 @@ def fight(enemies: list[Enemy]):
 
             try:
                 print(f"Current Energy:⚡️{player_energy}")
-                chosen_action = int(input("Choose an action:")) #Promt to choose action
+                chosen_action = int(input("\nChoose an action:")) - 1 #Promt to choose action
             except ValueError:
                 print("blud, you gotta enter an int")
                 continue
-            if chosen_action == 1: #----------Run away action
+            try: #tests if combat_actions[chosen_action] will result in an error
+                test = combat_actions[chosen_action]
+            except IndexError or ValueError:
+                print("That's not an available action, try again.")
+                continue
+            if combat_actions[chosen_action] == "Run Away": #----------Run away action
                 if player_energy >= math.floor(player_max_energy/10):
                     print(f"-⚡️{math.floor(player_max_energy / 10)}")
                     print("You pee your pants a little and sprint towards the first escape you see...")
@@ -785,11 +1034,13 @@ def fight(enemies: list[Enemy]):
                 else:
                     print("You're too exhausted to run away!")
 
-            elif chosen_action == 2:#----------Attack action
+            elif combat_actions[chosen_action] == "Attack":
+
+                print("")
                 for i in range(len(player_weapons)):
                     weapon = player_weapons[i]
 
-                    print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier)}]")
+                    print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier * player_effect_damage_multiplier)}]")
                 try:
                     chosen_attack = int(input("\n Choose an attack:"))
                 except IndexError or ValueError:
@@ -808,14 +1059,14 @@ def fight(enemies: list[Enemy]):
                             continue
                     else:
                         player_attack(player_weapons[(chosen_attack-1)], enemies[0])
-            elif chosen_action == 3:#--------------Rest action
+            elif combat_actions[chosen_action] == "Rest":
                 if player_max_energy != player_energy:
                     print(f"{regain_energy(0)}")
                 else:
                     print("You're already at max energy")
                     time.sleep(1.5)
                     continue
-            elif chosen_action == 4 and len(item_inventory) > 0: #------Use Item action
+            elif combat_actions[chosen_action] == "Use Item": #------Use Item action
                 for i,item in enumerate(item_inventory):
                     print(f"[{i+1}]: Use {item.name}")
                 item_choice = int(input("Choose an item to use:"))
@@ -829,10 +1080,11 @@ def fight(enemies: list[Enemy]):
                 continue
             player_turn = False
 
-            if len(active_enemies) > 0:
+            if dispose_corpses(enemies) > 0:
                 time.sleep(1)
                 print("\n------------------- Enemy Turn -------------------\n")
         else: #Enemy Turn
+
             for enemy in enemies:
                 if len(enemy.enemy_debuffs) > 0:
                     Debuff.process_debuffs(enemy.enemy_debuffs, enemy)
@@ -847,17 +1099,28 @@ def fight(enemies: list[Enemy]):
     else:
         end_fight(player_health)
 
+def dispose_corpses(enemies: list[Enemy]):
+    global dead_enemies
+
+    for enemy in dead_enemies:
+        enemies.remove(enemy)
+
+    dead_enemies = []
+
+    return len(enemies)
+
 def end_fight(health):
     global player_max_health
     global reward_due
+
     if health == player_max_health:
-        print("\nYou made it out unscathed!")
+        print("You made it out unscathed!")
     elif health >= player_max_health / 2:
-        print("\nYou made it out with a couple scratches...")
+        print("You made it out with a couple scratches.")
     elif health >= player_max_health / 4:
-        print("\nYou barely made it out...")
+        print("You barely made it out...")
     else:
-        print("\nYou barely made it to the exit, let alone lived...")
+        print("You barely made it to the exit, let alone lived...")
     for enemy in enemies:
         enemy.enemy_debuffs = []
     if reward_due == True and health>0:
@@ -913,12 +1176,15 @@ def player_attack(PlayerAttack, Enemy):
                 break
             # Damage Target
             time.sleep(.05)
-            result = target.damage(int(PlayerAttack.damage * player_damage_multiplier))
+            print(target.name)
+            result = target.damage(int(PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier))
             if result == "hit":
                 for keyword in PlayerAttack.keywords:
-                    if keyword == "burn":
-
-                        Debuff.manage_debuff(target, fire, target.enemy_debuffs)  # Just the intended target
+                    match keyword:
+                        case "burn":
+                            Debuff.manage_debuff(target, fire, target.enemy_debuffs)  # Just the intended target
+                        case "daze":
+                            Debuff.manage_debuff(target, daze, target.enemy_debuffs)  # Just the intended target
         if target.health <= 0:
             targets.remove(target)
 
@@ -928,7 +1194,7 @@ def player_attack(PlayerAttack, Enemy):
 
 def add_weapon(weapon_to_add):
     global player_weapons
-    print(f"\nYou got a new weapon: '{weapon_to_add.name}'")
+    print(f"You got a new weapon: '{weapon_to_add.name}'")
     choice = input(f"[1]: Take the weapon\n"
                    f"[2]: Leave the weapon\n")
     if choice == "1":
@@ -936,11 +1202,12 @@ def add_weapon(weapon_to_add):
             player_weapons.append(weapon_to_add)
             print(f"You gain a weapon: '{weapon_to_add.name}'")
         else:
-            print((f"Your weapon bag is already full, choose a weapon to replace:"))
+            print((f"Your weapon bag is already full, choose a weapon to replace:\n"))
 
             for i in range(len(player_weapons)):
                 weapon = player_weapons[i]
-                print(f"[{i + 1}]: replace {weapon.name}\n")
+                print(f"[{i + 1}]: replace {weapon.name}")
+            print("")
 
             replace_choice = input()
             replace_choice = int(replace_choice) - 1
@@ -1008,7 +1275,7 @@ def increase_strength(amount):
     global player_max_weapons
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .05):
+    if random.random() < 0.05 + (player_intelligence * .025):
         inspiration = 2
 
     amount *= inspiration
@@ -1032,7 +1299,7 @@ def increase_dexterity(amount):
     global player_crit
     global player_dodge
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .05):
+    if random.random() < 0.05 + (player_intelligence * .025):
         inspiration = 2
 
     amount *= inspiration
@@ -1053,7 +1320,7 @@ def increase_vitality(amount):
     global player_max_energy
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .05):
+    if random.random() < 0.05 + (player_intelligence * .025):
         inspiration = 2
 
     amount *= inspiration
@@ -1073,7 +1340,7 @@ def increase_intelligence(amount):
     global player_intelligence
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .05):
+    if random.random() < 0.05 + (player_intelligence * .025):
         inspiration = 2
 
     amount *= inspiration
