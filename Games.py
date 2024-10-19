@@ -57,7 +57,7 @@ stat_enemies_killed = 0
 stat_damage_taken = 0
 stat_damage_avoided = 0
 stat_energy_used = 0
-depth = 0
+depth = 1
 
 #-----------------------------------------------------------------------------------
 
@@ -100,6 +100,9 @@ class Enemy:
                             hits *= 3
                         case "double_strike":
                             hits *= 2
+                        case "self_harm":
+                            self.damage(self.attacks[attack_id].damage / 2)
+
 
             print(f"\nThe {self.name} {self.attacks[attack_id].message}")
 
@@ -277,7 +280,7 @@ class Room:
 
         match self.name:
             case "combat":
-                add_active_enemies(1, 3)
+                add_active_enemies(2, 3)
                 random.shuffle(active_enemies)
                 player_turn = True
                 if random.random() < .1:
@@ -513,10 +516,16 @@ def choose_path():
     global room_number
     global floor_rooms
 
-    if room_number < floor_rooms:
+    #Erry other room
+    if room_number < floor_rooms - 1:
 
         spawned_rooms = spawn_rooms()
 
+    #Shop before boss
+    elif room_number == floor_rooms - 1:
+        spawned_rooms = [shop_room]
+
+    #Boss
     else:
 
         spawned_rooms = [boss_room]
@@ -831,6 +840,8 @@ def add_active_enemies(min_weight,max_weight):
     global depth
     global enemies
 
+    floor_enemies = enemy_lists[depth]
+
     total_weight = random.randint(min_weight,max_weight)
 
     large_enemy_favor = 1 + (depth * 0.25)
@@ -839,7 +850,7 @@ def add_active_enemies(min_weight,max_weight):
 
         affordable_enemies = []
 
-        for enemy in enemies:
+        for enemy in floor_enemies:
             if enemy.size <= total_weight:
                 affordable_enemies.append(enemy)
 
@@ -902,12 +913,13 @@ slice = EnemyAttack("Slice","attempts to slice into you..",4,[])
 f_blast = EnemyAttack("Fire Blast","unleashes a burst of fire towards you..",2,["burn"])
 m_blast = EnemyAttack("Magic Blast","blasts a wave of magical energy at you..",4,[])
 tongue = EnemyAttack("Tongue Swipe", "flicks its tongue at you...", 1,  ["infection"])
+d_curse = EnemyAttack("Death Curse","channels the power of the death realm ..",8,["self_harm"])
 
 enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scream, bite,s_slam, poo_throw, pick_pock, smash, dice, slice, f_blast, m_blast]
 #=========================================================================================#
 
 #=====================================FLOOR 1 ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin",               1 , 7, 1, 0.1,[stab,d_slash, bite], 2,8,[])
+goblin = Enemy("🔺Grouchy Goblin",               1, 7, 1, 0.1,[stab,d_slash, bite], 2,8,[])
 skele = Enemy("🔺Skeleton Solider",              1, 9,2, 0.05,[stab,b_rage],1,12,[])
 slomp_monster = Enemy("🔺Slompster",             2, 25, 0, 0,[slomp, bite],10,20,[])
 grogus = Enemy("🔺Grogus",                       3, 45, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
@@ -918,22 +930,26 @@ lost_serf = Enemy("🔺Lost Serf",                 1, 8,0,.05,[b_rage,s_slam,poo
 rob_goblin = Enemy("🔺Goblin Robber",            1, 6,1,.25,[stab,pick_pock],15,4,[])
 angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 6, 3, 0.25,[slice, dice], 0,10,["weapon_drop"])
 goblin_mech = Enemy("🔺Goblin Mech",             3, 28, 4, 0,[f_blast, smash], 20,15,[])
-m_frog = Enemy("🔺Mutant Frog",                  1,6,0,.2,[tongue,bite,spit],5,6,[])
+m_frog = Enemy("🔺Mutant Frog",                  1, 6,0,.2,[tongue,bite,spit],5,6,[])
 
 enemies_floor_1 = [goblin, skele, slomp_monster,living_ore,clkwrk_gremlin,wailing_wisp,lost_serf,rob_goblin,angry_weapons]
 
 #=====================================FLOOR 2 ENEMIES=======================================#
-ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 60,1,0,[stab,smash, m_blast],25,40,[])
+ghoulem = Enemy("🔺Gravestone Ghoulem",         4,75,1,0,[stab,smash, m_blast],35,45,[])
+s_bandit = Enemy("🔺Soulless Bandit",           2,10,0,.2,[slice,pick_pock,dice],18,8,[])
+l_prisoner = Enemy("🔺Lost Prisoner",             1,16,0,.05,[b_rage,body_slam],10,12,[])
+clkwrk_wizard = Enemy("🔺Clockwork Wizard",     2,10,5,.1,[m_blast,d_curse],14,22,[])
 
-enemies_floor_2 = [clkwrk_gremlin, wailing_wisp, rob_goblin,angry_weapons, ghoulem, goblin_mech, grogus]
+enemies_floor_2 = [clkwrk_gremlin, wailing_wisp, rob_goblin,angry_weapons, ghoulem, goblin_mech, grogus,s_bandit,clkwrk_wizard,l_prisoner]
 
 #=====================================FLOOR 3 ENEMIES=======================================#
 
-enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_goblin, angry_weapons, ghoulem, goblin_mech, grogus]
+enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_goblin, angry_weapons, ghoulem, goblin_mech, grogus,clkwrk_wizard,s_bandit]
 
 #===================================================================================#
 
 enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech,m_frog]
+enemy_lists = [enemies_floor_1,enemies_floor_2,enemies_floor_3]
 
 #=====================================BOSSES=======================================#
 
@@ -957,7 +973,7 @@ g_dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 
 anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"], 2)
 glock = PlayerAttack("Goblin Glock", "You unload your clip...", 2, 7, ["double_strike","triple_strike"], 3)
 uzi = PlayerAttack("Enchanted Uzi", "You spray and pray...", 2, 10, ["10x_attack","aimless"], 3)
-boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 4, 1, [], 1)
+boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 3, 2, ["return"], 1)
 spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [], 1)
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 8, ["burn","splash"], 3)
 torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,4,["burn"], 1)
@@ -1100,7 +1116,7 @@ def player_effect_tick():
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick,broadsword]
+player_weapons = [shortsword,iron_battleaxe,stick,broadsword,boomerang]
 active_weapons = []
 player_max_weapons = 3.5
 player_accessories = []
@@ -1567,9 +1583,17 @@ def player_attack(PlayerAttack, Enemy):
                                     if target_id + 1 < len(active_enemies):#this is stupid
                                         active_enemies[target_id + 1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))#this is stupid
             dispose_corpses(active_enemies)
-
-    player_weapons.append(PlayerAttack)
-    if PlayerAttack.name != "Boomerang":
+    for keyword in PlayerAttack.keywords:
+        match keyword:
+            case "return":
+                print(f"Your {PlayerAttack.name} returned!")
+                break
+            case _:
+                player_weapons.append(PlayerAttack)
+                active_weapons.remove(PlayerAttack)
+                break
+    else:
+        player_weapons.append(PlayerAttack)
         active_weapons.remove(PlayerAttack)
     time.sleep(1.5)
 
