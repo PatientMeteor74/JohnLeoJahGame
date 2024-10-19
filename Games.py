@@ -901,7 +901,7 @@ dice = EnemyAttack("Dice","prepares to chop you to pieces...",2,["triple_strike"
 slice = EnemyAttack("Slice","attempts to slice into you..",4,[])
 f_blast = EnemyAttack("Fire Blast","unleashes a burst of fire towards you..",2,["burn"])
 m_blast = EnemyAttack("Magic Blast","blasts a wave of magical energy at you..",4,[])
-tongue = EnemyAttack("Tongue Swipe", "flicks its tongue at you...", 5,  ["infection"])
+tongue = EnemyAttack("Tongue Swipe", "flicks its tongue at you...", 1,  ["infection"])
 
 enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scream, bite,s_slam, poo_throw, pick_pock, smash, dice, slice, f_blast, m_blast]
 #=========================================================================================#
@@ -1055,6 +1055,7 @@ def player_effect_tick():
     global player_health
 
     player_effect_damage_multiplier = 1.0
+    player_effect_damage_taken_multiplier = 1.0
 
     for active_effect in player_active_effects:
 
@@ -1074,6 +1075,7 @@ def player_effect_tick():
                     player_effect_damage_multiplier *= (1.5 * active_effect.amplifier)
             case "Infection":
                 if active_effect.duration > 1:
+                    print("INFECTIOUS")
                     player_effect_damage_taken_multiplier *= (1.5 * active_effect.amplifier)
             case "Stun":
                 player_stunned = True
@@ -1111,10 +1113,11 @@ def damage_player(amount):
     global player_armor
     global stat_damage_avoided
     global stat_damage_taken
+    global player_effect_damage_taken_multiplier
 
     result = "hit"
 
-    damage_taken = max(0, (amount - (random.randint(0,player_armor))))
+    damage_taken = int(max(0, (amount - (random.randint(0,player_armor)))) * player_effect_damage_taken_multiplier)
 
     if random.random() <= player_dodge:
         print(f"💨 You dodge out of the way, unaffected!")
@@ -1566,8 +1569,8 @@ def player_attack(PlayerAttack, Enemy):
             dispose_corpses(active_enemies)
 
     player_weapons.append(PlayerAttack)
-    if
-    active_weapons.remove(PlayerAttack)
+    if PlayerAttack.name != "Boomerang":
+        active_weapons.remove(PlayerAttack)
     time.sleep(1.5)
 
 #-----------------------------------------------------------------------------------#
@@ -1675,9 +1678,10 @@ def increase_strength(amount):
         print(f"⏏️ Your Strength raised from 💢[{player_strength - amount}] to 💢[{player_strength}]")
     else:
         print(f"⏏️⏏️ Eureka! Your Strength raised from 💢[{(player_strength - amount)}] to 💢[{player_strength}]")
-    if player_max_weapons%2 !=0.0:
+    if math.floor(player_max_weapons) != player_max_weapons:
         time.sleep(1)
         print("\nYou are now strong enough to carry more weapons!")
+        time.sleep(1)
 
 def increase_dexterity(amount):
     global player_dexterity
