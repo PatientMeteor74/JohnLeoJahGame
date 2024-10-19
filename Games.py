@@ -40,6 +40,8 @@ player_gold = 0
 
 player_max_energy = 10
 player_energy = player_max_energy
+rested = 0
+
 player_stunned = False
 player_active_effects = []
 
@@ -122,16 +124,13 @@ class Enemy:
                                             print(f"It grabbed {steal_amt}🪙!")
                                         else:
                                             print("You felt some grubby fingers touch yo dingaling through yo pocket")
-                                            for i in range(0, 2):
-                                                print(".", end="")
-                                                time.sleep(.66)
-                                            print(".\n")
+                                            wait(2,3)
                                 case "daze":
                                     apply_effect(daze, player_active_effects, player_health, "player", 2, 1.0)
                                 case "burn":
                                     apply_effect(burn, player_active_effects, player_health, "player", 4, 1.0)
                                 case "stun":
-                                    if random.random()<.50:
+                                    if random.random()<.40:
                                         apply_effect(stun, player_active_effects, player_health, "player", 1, 1.0)
 
 
@@ -173,10 +172,8 @@ class Enemy:
 
         if self.health <= 0:
             self.die()
-
-        return result
-
         time.sleep(.05)
+        return result
 
     def die(self):
         time.sleep(0.5)
@@ -297,7 +294,7 @@ class Room:
                 fight(active_enemies)
             case "rest":
                 print("You set up a small camp to recover health and energy")
-                regain_energy(0)
+                rested = 10
                 heal_player((player_max_health - player_health) * random.uniform(0.5,1.0))
                 choose_path()
             case "loot":
@@ -461,7 +458,7 @@ class Item:
             case "health":
                 heal_player(self.effect_amount)
             case "energy":
-                regain_energy(self.effect_amount)
+                add_energy(self.effect_amount, False)
             case "experience":
                 gain_xp(self.effect_amount+(xp_needed*.3))
                 if not active_enemies:
@@ -474,7 +471,7 @@ class Item:
 health_potion = Item("Health Potion", "Restores a small amount of health.", "health", 20, 15)
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 35)
 enormous_health_potion = Item("Enormous Health Potion", "Heals you to full health", "health", player_max_health, 80)
-energy_potion = Item("Energy Potion", "Restores a small amount of energy.", "energy", player_max_energy, 30)
+energy_potion = Item("Energy Potion", "Gain .", "energy", player_max_energy, 10)
 tome_o_knoledge = Item("Tome of Knoledge","Grants you XP","experience",30,45)
 
 items = [health_potion, large_health_potion, enormous_health_potion, energy_potion, tome_o_knoledge]
@@ -495,7 +492,9 @@ rooms = [combat_room, shop_room, elite_room, rest_room, loot_room, encounter_roo
 def wait(total_time, periods):
     for i in range(0, periods):
         time.sleep(total_time / periods)
-        print(".")
+        print(".",end="")
+    time.sleep(total_time/periods)
+    print("")
 
 #-------------------------------------Room Logic------------------------------------#
 
@@ -632,9 +631,7 @@ def find_loot():
     loot = ["pile_gold","treasure_chest"]
     found_loot = random.choice(loot)
     time.sleep(.5)
-    for i in range(0, 3):
-        print(".", end="")
-        time.sleep(.5)
+    wait(1.5,3)
     print("")
     match found_loot:
         case "pile_gold":
@@ -649,9 +646,7 @@ def find_loot():
             print(f"A treasure chest with {gain_gold(found_gold)}!")
             time.sleep(1)
             print("you rummage through the gold and find")
-            for i in range(0, 3):
-                print(".", end="")
-                time.sleep(.5)
+            wait(1.5,3)
             print("\n")
             t_loot_list = ["weapon","gold","tome"]
             t_loot = random.choice(t_loot_list)
@@ -908,18 +903,18 @@ enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scr
 #=========================================================================================#
 
 #=====================================ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin", 1 , 5, 1, 0.1,[stab,d_slash, bite], 2,8,[])
-skele = Enemy("🔺Skeleton Solider", 1, 7,2, 0.05,[stab,b_rage],1,12,[])
-slomp_monster = Enemy("🔺Slompster", 2, 20, 0, 0,[slomp, bite],10,20,[])
-grogus = Enemy("🔺Grogus",3, 35, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
-living_ore = Enemy("🔺Living Ore", 2, 10, 5,0, [body_slam, scream],20,5,[])
-clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 1, 5, 0.1, [bite],2,8,[])
-wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.4, [scream,m_blast],0,12,[])
+goblin = Enemy("🔺Grouchy Goblin", 1 , 7, 1, 0.1,[stab,d_slash, bite], 2,8,[])
+skele = Enemy("🔺Skeleton Solider", 1, 9,2, 0.05,[stab,b_rage],1,12,[])
+slomp_monster = Enemy("🔺Slompster", 2, 25, 0, 0,[slomp, bite],10,20,[])
+grogus = Enemy("🔺Grogus",3, 45, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
+living_ore = Enemy("🔺Living Ore", 2, 12, 5,0, [body_slam, scream],20,5,[])
+clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 2, 5, 0.1, [bite],2,8,[])
+wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.66, [scream,m_blast],0,12,[])
 lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[b_rage,s_slam,poo_throw],8,3,[])
-rob_goblin = Enemy("🔺Goblin Robber", 1, 5,1,.2,[stab,pick_pock],15,4,[])
-ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 50,1,0,[stab,smash, m_blast],25,40,[])
-angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 3, 3, 0.25,[slice, dice], 0,10,["weapon_drop"])
-goblin_mech = Enemy("🔺Goblin Mech", 3, 22, 4, 0,[f_blast, smash], 20,15,[])
+rob_goblin = Enemy("🔺Goblin Robber", 1, 6,1,.25,[stab,pick_pock],15,4,[])
+ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 60,1,0,[stab,smash, m_blast],25,40,[])
+angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 6, 3, 0.25,[slice, dice], 0,10,["weapon_drop"])
+goblin_mech = Enemy("🔺Goblin Mech", 3, 28, 4, 0,[f_blast, smash], 20,15,[])
 
 enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech]
 
@@ -937,28 +932,30 @@ bosses = [slomperor, gigagoblin, gigatoad, c_monstrosity]
 #===================================================================================#
 
 #=====================================PLAYER ATTACKS======================================#
-shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 4, 2, [], 1)
-iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 7, 5, [], 1)
-dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 2, 2, ["double_strike"], 1)
+shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 5, 3, [], 1)
+broadsword = PlayerAttack("Broadsword","You have heave your broadsword",5,7,["weak_splash"],1)
 stick = PlayerAttack("Whacking Stick", "You whack that fella head smoove off...", 1, 0, [], 1)
+iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 8, 5, [], 1)
+
+g_dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 2, 2, ["double_strike"], 1)
 anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"], 2)
 glock = PlayerAttack("Goblin Glock", "You unload your clip...", 2, 8, ["7x_strike"], 3)
 uzi = PlayerAttack("Enchanted Uzi", "You spray and pray...", 3, 10, ["7x_strike","aimless"], 3)
-boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 3, 1, [], 1)
-spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [], 1)
-f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 9, ["burn","splash"], 3)
-torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,3,["burn"], 1)
-r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,6,["splash","aimless"], 3)
+boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 5, 1, [], 1)
+spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 1, [], 1)
+f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 8, ["burn","splash"], 3)
+torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,4,["burn"], 1)
+r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,7,["omni_hit","aimless"], 3)
 tp_hammer = PlayerAttack("1000LB Hammer","With tremendous effort, you wildly swing the immense hammer...",22,14,["aimless"], 3)
 light_staff = PlayerAttack("Light Staff", "You produce a a blinding light ...",0,6,["daze","hit_all","aimless"], 3)
-flare_gun = PlayerAttack("Flare Gun", "You fire off a blinding flare ...",2,2,["daze"], 2)
-bomb_launcher = PlayerAttack("Dynamite Launcher", "A sizzling stick of dynamite flies towards your enemies ...",2,2,["splash"], 2)
+flare_gun = PlayerAttack("Flare Gun", "You fire off a blinding flare ...",0,2,["daze"], 2)
+g_launcher = PlayerAttack("Gobomb Launcher", "A sizzling goblin bomb flies wildly through the air...",8,5,["splash","aimless"], 2)
 
-weapons = [shortsword,iron_battleaxe,dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer]
+weapons = [shortsword,iron_battleaxe,g_dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,broadsword]
 
 #=========================================================================================#
 
-loot_weapons = [dagger,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer]
+loot_weapons = [g_dagger,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher]
 
 #=========================================================================================#
 
@@ -1084,8 +1081,9 @@ def player_effect_tick():
 #=========================================================================================#
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick,flare_gun,f_bucket]
-player_max_weapons = 4.5
+player_weapons = [shortsword,iron_battleaxe,stick,broadsword]
+active_weapons = []
+player_max_weapons = 2.5
 player_accessories = []
 item_inventory = []
 
@@ -1142,7 +1140,7 @@ def heal_player(amount):
         print(f"💞 You restore {healing_taken} health [❤️{player_health}/{player_max_health}]")
     else:
         print(f"💞💞 Eureka! You restore {healing_taken} health [❤️{player_health}/{player_max_health}]")
-
+""""
 def regain_energy(amount):
     global player_energy
     global player_max_energy
@@ -1150,7 +1148,8 @@ def regain_energy(amount):
 
     inspiration = 1
     if random.random() < 0.05 + (player_intelligence * 0.05):
-        inspiration = 99
+        inspiration = 2
+    
     gain=0
     if amount>0:
         gain = amount
@@ -1162,10 +1161,50 @@ def regain_energy(amount):
     gain = min(gain, player_max_energy - player_energy)
     player_energy += gain
 
-    if inspiration == 1:
+    if inspiration == 2:
         return f"You restore⚡️{gain} energy."
     else:
         return f"In a flash of inspiration, restore⚡️{gain}, energy!"
+"""
+
+def add_energy(amount, respect_max):
+    global player_energy
+    global player_max_energy
+    global player_intelligence
+
+    inspiration = False
+
+    if respect_max == True and (player_energy + amount) > player_max_energy:
+        amount = (player_max_energy - player_energy)
+
+    if random.random() < 0.05 + (player_intelligence * 0.025):
+        inspiration = True
+        respect_max = False
+        amount *= 2
+
+    if amount > 0:
+
+        player_energy += amount
+
+        if inspiration:
+            print(f"Eureka! you gained⚡️{amount} energy [⚡️{player_energy}/{player_max_energy}]")
+        else:
+            print(f"you gained⚡️{amount} energy [⚡️{player_energy}/{player_max_energy}]")
+    else:
+        print(f"you gained no energy {player_energy}/{player_max_energy}]")
+
+
+def recharge_energy():
+    global player_energy
+    global player_max_energy
+    global rested
+
+    player_energy = player_max_energy
+
+    if rested > 0:
+        print(f"You are well rested...")
+        add_energy(rested, False)
+        rested = 0
 
 def gain_gold(amount):
     global player_gold
@@ -1208,109 +1247,129 @@ def fight(enemies: list[Enemy]):
     global player_active_effects
     global player_effect_damage_multiplier
     global reward_due
+    global rested
+    global active_weapons
+
     print("\nIt's time to fight\n"
           "You're facing...")
     for i in range(0,len(enemies)):
         print(f"[ A {enemies[i].name} with ❤️{enemies[i].health} ]")
     while dispose_corpses(enemies) > 0 and player_health > 0:
 
-        if player_turn:
+        if player_turn: #Player Turn Start
+            print("\n------------------- Your Turn -------------------\n")
+            player_effect_tick()
+            recharge_energy()
+            shuffle_weapons()
+            while player_turn and dispose_corpses(enemies) > 0: #Player Action Loop
 
-            if player_stunned: # Check for if player is stunned
-                print("You are stunned and cannot act this turn!")
-                for i in range(0,3):
+                if player_stunned: # Check for if player is stunned
+                    print("You are stunned and cannot act this turn!")
+                    for i in range(0,3):
+                        time.sleep(.66)
+                        print(".",end="")
                     time.sleep(.66)
-                    print(".",end="")
-                time.sleep(.66)
-                player_stunned = False  # Reset stun status
-                player_turn = False  # End player's turn
-                print("\n------------------- Enemy Turn -------------------\n")
-                continue
-            print(f"\nHealth: [❤️{player_health}/{player_max_health}]") #Start of player turn
-            for i in range(len(combat_actions)):
+                    player_stunned = False  # Reset stun status
+                    player_turn = False  # End player's turn
+                    continue
+                print(f"\nHealth: [❤️{player_health}/{player_max_health}]") #Start of player turn
+                for i in range(len(combat_actions)):
 
-                if combat_actions[i] == "Use Item":
-                    if len(item_inventory) > 0:
+                    if combat_actions[i] == "Use Item":
+                        if len(item_inventory) > 0:
+                            print(f"[{i + 1}]: {combat_actions[i]}")  # Printing Combat actions
+                        else:
+                            print()
+                            #continue
+                    else:
                         print(f"[{i + 1}]: {combat_actions[i]}")  # Printing Combat actions
-                    else:
-                        continue
-                else:
-                    print(f"[{i + 1}]: {combat_actions[i]}")  # Printing Combat actions
 
-            try:
-                print(f"Current Energy:⚡️{player_energy}")
-                chosen_action = int(input("\nChoose an action:")) - 1 #Promt to choose action
-            except ValueError:
-                print("blud, you gotta enter an int")
-                continue
-            try: #tests if combat_actions[chosen_action] will result in an error
-                test = combat_actions[chosen_action]
-            except IndexError or ValueError:
-                print("That's not an available action, try again.")
-                continue
-            if combat_actions[chosen_action] == "Run Away": #----------Run away action
-                if player_energy >= math.floor(player_max_energy/10):
-                    print(f"-⚡️{math.floor(player_max_energy / 10)}")
-                    print("You pee your pants a little and sprint towards the first escape you see...")
-                    time.sleep(1.0)
-                    player_energy -= math.floor(player_max_energy / 10)
-                    if random.random() <.65:
-                        active_enemies = []
-                        reward_due = False
-                        escape_room = rooms[random.randint(0, len(rooms)) - 1]
-                        print(escape_room.stumble_message)
-                        test_for_level_up()
-                        escape_room.enter()
-                    else:
-                        print("The opps block yo path, you cooked, blud")
-                else:
-                    print("You're too exhausted to run away!")
-
-            elif combat_actions[chosen_action] == "Attack":
-
-                print("")
-                for i in range(len(player_weapons)):
-                    weapon = player_weapons[i]
-
-                    print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier * player_effect_damage_multiplier)}]")
                 try:
-                    chosen_attack = int(input("\n Choose an attack:"))
+                    print(f"Current Energy:⚡️{player_energy}")
+                    chosen_action = int(input("\nChoose an action:")) - 1 #Promt to choose action
+                except ValueError:
+                    print("blud, you gotta enter an int")
+                    continue
+                try: #tests if combat_actions[chosen_action] will result in an error
+                    test = combat_actions[chosen_action]
                 except IndexError or ValueError:
+                    print("That's not an available action, try again.")
                     continue
-                if player_energy-player_weapons[chosen_attack-1].energy < 0:
-                    print("You don't have enough energy for that attack :(")
-                    continue
-                else:
-                    if len(enemies) > 1 and "aimless" not in player_weapons[(chosen_attack-1)].keywords:
-                        for i in range(len(enemies)):
-                            print(f"[{i + 1}]: attack {enemies[i].name}")
-                        try:
-                            chosen_enemy = int(input("Choose an enemy to attack:"))
-                            player_attack(player_weapons[(chosen_attack-1)], enemies[(chosen_enemy-1)])
-                        except IndexError or ValueError:
-                            continue
+                if combat_actions[chosen_action] == "Run Away": #----------Run away action
+                    if player_energy >= math.floor(player_max_energy/3):
+                        print(f"-⚡️{math.floor(player_max_energy / 3)}")
+                        print("You pee your pants a little and sprint towards the first escape you see...")
+                        time.sleep(1.0)
+                        player_energy -= math.floor(player_max_energy / 10)
+                        if random.random() <.65:
+                            active_enemies = []
+                            reward_due = False
+                            escape_room = rooms[random.randint(0, len(rooms)) - 1]
+                            print(escape_room.stumble_message)
+                            for weapon in active_weapons:
+                                player_weapons.append(weapon)
+                            test_for_level_up()
+                            escape_room.enter()
+                        else:
+                            print("The opps block yo path, you cooked, blud")
                     else:
-                        player_attack(player_weapons[(chosen_attack-1)], enemies[0])
-            elif combat_actions[chosen_action] == "Rest":
-                if player_max_energy != player_energy:
-                    print(f"{regain_energy(0)}")
-                else:
-                    print("You're already at max energy")
-                    time.sleep(1.5)
-                    continue
-            elif combat_actions[chosen_action] == "Use Item": #------Use Item action
-                for i,item in enumerate(item_inventory):
-                    print(f"[{i+1}]: Use {item.name}")
-                item_choice = int(input("Choose an item to use:"))
-                try:
-                    item_inventory[item_choice - 1].use()
-                except IndexError:
-                    print("Not an available action")
-                    continue
-            else: #-------------Input # other that options
-                print("That's not an available action, try again.")
-                continue
-            player_turn = False
+                        print("You're too exhausted to run away!")
+
+                elif combat_actions[chosen_action] == "Attack":
+                    if len(active_weapons)>0:
+                        print("")
+                        for i in range(len(active_weapons)):
+                            weapon = active_weapons[i]
+
+                            print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier * player_effect_damage_multiplier)}]")
+                        try:
+                            chosen_attack = int(input("\n Choose an attack:"))
+                            test = active_weapons[chosen_attack-1].energy
+                        except IndexError or ValueError:
+                            #continue
+                            print()
+                        if player_energy-active_weapons[chosen_attack-1].energy < 0:
+                            print("You don't have enough energy for that attack :(")
+                            #continue
+                            print()
+                        else:
+                            if len(enemies) > 1 and "aimless" not in active_weapons[(chosen_attack-1)].keywords:
+                                for i in range(len(enemies)):
+                                    print(f"[{i + 1}]: attack {enemies[i].name}")
+                                try:
+                                    chosen_enemy = int(input("Choose an enemy to attack:"))
+                                    player_attack(active_weapons[(chosen_attack-1)], enemies[(chosen_enemy-1)])
+                                except IndexError or ValueError:
+                                    #continue
+                                    print()
+                            else:
+                                player_attack(active_weapons[(chosen_attack-1)], enemies[0])
+                                if player_energy>0:
+                                    #continue
+                                    print()
+                    else:
+                        print("you got no wepon")
+                elif combat_actions[chosen_action] == "Rest":
+                    if player_energy > 1:
+                        print(f"You reserve your remaining energy for later....")
+                        rested = int(player_energy / 2)
+                    time.sleep(1.0)
+                    player_turn = False
+                    for weapon in active_weapons:
+                        player_weapons.append(weapon)
+                    #shuffle_weapons()
+                elif combat_actions[chosen_action] == "Use Item": #------Use Item action
+                    for i,item in enumerate(item_inventory):
+                        print(f"[{i+1}]: Use {item.name}")
+                    item_choice = int(input("Choose an item to use:"))
+                    try:
+                        item_inventory[item_choice - 1].use()
+                    except IndexError:
+                        print("Not an available action")
+                        #continue
+                else: #-------------Input # other that options
+                    print("That's not an available action, try again.")
+                    #continue
 
             if dispose_corpses(enemies) > 0:
                 time.sleep(1)
@@ -1327,11 +1386,22 @@ def fight(enemies: list[Enemy]):
             player_turn = True
 
             time.sleep(1)
-            print("\n------------------- Your Turn -------------------\n")
-            player_effect_tick()
 
     else:
         end_fight(player_health)
+
+def shuffle_weapons():
+    global player_weapons
+    global active_weapons
+    global player_max_weapons
+    active_weapons = []
+    random.shuffle(player_weapons)
+    if len(player_weapons) >= math.ceil(player_max_weapons):
+        for i in range(0, math.ceil(player_max_weapons)):
+            active_weapons.append(player_weapons.pop())
+    else:
+        for i in range(0, len(player_weapons)):
+            active_weapons.append(player_weapons.pop())
 
 def dispose_corpses(enemies: list[Enemy]):
     global dead_enemies
@@ -1346,7 +1416,9 @@ def dispose_corpses(enemies: list[Enemy]):
 def end_fight(health):
     global player_max_health
     global reward_due
-
+    global active_weapons
+    for weapon in active_weapons:
+        player_weapons.append(weapon)
     if health == player_max_health:
         print("You made it out unscathed!")
     elif health >= player_max_health / 2:
@@ -1413,6 +1485,10 @@ def player_attack(PlayerAttack, Enemy):
             case "hit_all":
                 for enemy in active_enemies:
                     targets.append(enemy)
+            case "weak_splash":
+                if target_id - 1 >= 0:
+                    active_enemies[target_id-1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier)/2))
+
 
     if not targets:
         targets.append(initial_target)
@@ -1433,9 +1509,20 @@ def player_attack(PlayerAttack, Enemy):
                             apply_effect(burn, target.enemy_effects, target.health, target.name,4,1.0)
                         case "daze":
                             apply_effect(daze, target.enemy_effects, target.health, target.name,3,1.0)
+                        case "weak_splash": #this is stupid
+                            if target_id + 1 < len(active_enemies):
+                                active_enemies[target_id + 1].damage(
+                                    int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))
+            else:#this is stupid
+                for keyword in PlayerAttack.keywords:#this is stupid
+                    match keyword:#this is stupid
+                        case "weak_splash":#this is stupid
+                            if target_id + 1 < len(active_enemies):#this is stupid
+                                active_enemies[target_id + 1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))#this is stupid
         if target.health <= 0:
             targets.remove(target)
-
+    player_weapons.append(PlayerAttack)
+    active_weapons.remove(PlayerAttack)
     time.sleep(1.5)
 
 #-----------------------------------------------------------------------------------#
@@ -1446,7 +1533,7 @@ def add_weapon(weapon_to_add):
     choice = input(f"[1]: Take the weapon\n"
                    f"[2]: Leave the weapon\n")
     if choice == "1":
-        if len(player_weapons) < player_max_weapons:
+        if len(player_weapons) <= 40:
             player_weapons.append(weapon_to_add)
             print(f"You gain a weapon: '{weapon_to_add.name}'")
         else:
@@ -1544,7 +1631,7 @@ def increase_strength(amount):
         print(f"⏏️ Your Strength raised from 💢[{player_strength - amount}] to 💢[{player_strength}]")
     else:
         print(f"⏏️⏏️ Eureka! Your Strength raised from 💢[{(player_strength - amount)}] to 💢[{player_strength}]")
-    if player_max_weapons - weapon_increase >=1:
+    if player_max_weapons%2 !=0:
         time.sleep(1)
         print("\nYou are now strong enough to carry more weapons!")
 
@@ -1559,7 +1646,7 @@ def increase_dexterity(amount):
     amount *= inspiration
 
     crit_increase = .1 * amount
-    dodge_increase =.025*amount
+    dodge_increase =(.05*amount)
 
     player_dexterity += amount
     player_crit += crit_increase
@@ -1580,8 +1667,8 @@ def increase_vitality(amount):
 
     amount *= inspiration
 
-    energy_increase = 2 * amount
-    health_increase = 10 * amount
+    energy_increase = 1 * amount
+    health_increase = 15 * amount
 
     player_vitality += amount
     player_max_health  += health_increase
