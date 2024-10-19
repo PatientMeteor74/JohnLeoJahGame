@@ -267,6 +267,7 @@ class Room:
         global stat_rooms_explored
         global room_number
         global reward_due
+        global is_boss_fight
         room_number += 1
         stat_rooms_explored += 1
 
@@ -567,15 +568,16 @@ def randomize_floor_rooms():
     global room_number
 
     room_number = 0
-    floor_rooms = random.randint(8,12)
+    floor_rooms = random.randint(1,2)#8,12
 
 def go_deeper():
     global depth
     depth += 1
     plural = "s" if depth > 1 else ""
-    print(f"You descend further into the depths... You are {depth} floor{plural} in, with an unknowable amount to go...")
+    print(f"..you've made it {depth} floor{plural} in, with an unknowable number to go...")
     randomize_floor_rooms()
     choose_path()
+
 #--------------------------------------------------------------------------------------#
 
 def open_shop():
@@ -881,20 +883,20 @@ def game_init():
 #=====================================ENEMY ATTACKS=======================================#
 slomp = EnemyAttack("Slomp Attack", "attempts to gludgeon you with its slomp...",5,  ["daze"])
 spit = EnemyAttack("Spit", "Spits moldy goop at your eye...",0,  ["infection"])
-stab = EnemyAttack("Stab"," lunges forward to stab you...",4,  [])
-d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger...",3,  [])
+stab = EnemyAttack("Stab"," lunges forward to stab you...",5,  [])
+d_slash = EnemyAttack("Dagger Slash","quickly slashes towards your chest with a dagger...",4,  [])
 body_slam = EnemyAttack("Body Slam","throws itself toward you with great force...", 3,  ["stun"])
 b_rage = EnemyAttack("Blind Rage", "attacks you in a blind rage...",4, [])
 expl_cask = EnemyAttack("Explosive Cask", "throws an explosive cask at you...", 5, [])
 b_roll = EnemyAttack("Barrel Roll", "whirls a cask your feet...", 2,  [])
 scream = EnemyAttack("Scream", "unleashes a piercing shriek...", 0, ["daze"])
-bite = EnemyAttack("Bite", "attempts to bite you...", 2, [])
-s_slam = EnemyAttack("Shovel Slam","tries to smash your head with a shovel...",4,["stun"])
+bite = EnemyAttack("Bite", "attempts to bite you...", 3, [])
+s_slam = EnemyAttack("Shovel Slam","tries to smash your head with a shovel...",5,["stun"])
 poo_throw = EnemyAttack("Poo Throw","throws some poo at you...",0,[])
 pick_pock = EnemyAttack("Pick Pocket","lunges for your pockets...",0,["steal"])
 smash = EnemyAttack("Smash","prepares to slam down on you...",5,[])
 dice = EnemyAttack("Dice","prepares to chop you to pieces...",2,["triple_strike"])
-slice = EnemyAttack("Slice","attempts to slice into you..",3,[])
+slice = EnemyAttack("Slice","attempts to slice into you..",4,[])
 f_blast = EnemyAttack("Fire Blast","unleashes a burst of fire towards you..",2,["burn"])
 m_blast = EnemyAttack("Magic Blast","blasts a wave of magical energy at you..",4,[])
 tongue = EnemyAttack("Tongue Swipe", "flicks its tongue at you...", 5,  ["infection"])
@@ -902,28 +904,40 @@ tongue = EnemyAttack("Tongue Swipe", "flicks its tongue at you...", 5,  ["infect
 enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scream, bite,s_slam, poo_throw, pick_pock, smash, dice, slice, f_blast, m_blast]
 #=========================================================================================#
 
-#=====================================ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin", 1 , 7, 1, 0.1,[stab,d_slash, bite], 2,8,[])
-skele = Enemy("🔺Skeleton Solider", 1, 9,2, 0.05,[stab,b_rage],1,12,[])
-slomp_monster = Enemy("🔺Slompster", 2, 25, 0, 0,[slomp, bite],10,20,[])
-grogus = Enemy("🔺Grogus",3, 45, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
-living_ore = Enemy("🔺Living Ore", 2, 12, 5,0, [body_slam, scream],20,5,[])
-clkwrk_gremlin = Enemy("🔺Clockwork Gremlin", 1, 2, 5, 0.1, [bite],2,8,[])
-wailing_wisp = Enemy("🔺Wailing Wisp", 1, 1, 0, 0.66, [scream,m_blast],0,12,[])
-lost_serf = Enemy("🔺Lost Serf", 1, 8,0,.05,[b_rage,s_slam,poo_throw],8,3,[])
-rob_goblin = Enemy("🔺Goblin Robber", 1, 6,1,.25,[stab,pick_pock],15,4,[])
-ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 60,1,0,[stab,smash, m_blast],25,40,[])
+#=====================================FLOOR 1 ENEMIES=======================================#
+goblin = Enemy("🔺Grouchy Goblin",               1 , 7, 1, 0.1,[stab,d_slash, bite], 2,8,[])
+skele = Enemy("🔺Skeleton Solider",              1, 9,2, 0.05,[stab,b_rage],1,12,[])
+slomp_monster = Enemy("🔺Slompster",             2, 25, 0, 0,[slomp, bite],10,20,[])
+grogus = Enemy("🔺Grogus",                       3, 45, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
+living_ore = Enemy("🔺Living Ore",               2, 12, 5,0, [body_slam, scream],20,5,[])
+clkwrk_gremlin = Enemy("🔺Clockwork Gremlin",    1, 2, 5, 0.1, [bite],2,8,[])
+wailing_wisp = Enemy("🔺Wailing Wisp",           1, 1, 0, 0.66, [scream,m_blast],0,12,[])
+lost_serf = Enemy("🔺Lost Serf",                 1, 8,0,.05,[b_rage,s_slam,poo_throw],8,3,[])
+rob_goblin = Enemy("🔺Goblin Robber",            1, 6,1,.25,[stab,pick_pock],15,4,[])
 angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 6, 3, 0.25,[slice, dice], 0,10,["weapon_drop"])
-goblin_mech = Enemy("🔺Goblin Mech", 3, 28, 4, 0,[f_blast, smash], 20,15,[])
+goblin_mech = Enemy("🔺Goblin Mech",             3, 28, 4, 0,[f_blast, smash], 20,15,[])
+m_frog = Enemy("🔺Mutant Frog",                  1,6,0,.2,[tongue,bite,spit],5,6,[])
 
-enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech]
+enemies_floor_1 = [goblin, skele, slomp_monster,living_ore,clkwrk_gremlin,wailing_wisp,lost_serf,rob_goblin,angry_weapons]
+
+#=====================================FLOOR 2 ENEMIES=======================================#
+ghoulem = Enemy("🔺Gravestone Ghoulem", 4, 60,1,0,[stab,smash, m_blast],25,40,[])
+
+enemies_floor_2 = [clkwrk_gremlin, wailing_wisp, rob_goblin,angry_weapons, ghoulem, goblin_mech, grogus]
+
+#=====================================FLOOR 3 ENEMIES=======================================#
+
+enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_goblin, angry_weapons, ghoulem, goblin_mech, grogus]
 
 #===================================================================================#
+
+enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech]
 
 #=====================================BOSSES=======================================#
 
 slomperor = Boss("👹Slomp Emperor", 10, 125, 0, 0.05,[slomp, spit, smash], 50,100,[], "I vow the whole world will be one day slomped... starting with YOU!!!", "Argh... At least I never ran a... democracy... ")
 gigagoblin = Boss("👹Goblin Juggernaut", 10, 75, 3, .01, [poo_throw, smash, scream, bite, body_slam, pick_pock, stab], 50, 100, [], "GGRGRRRRAAAAAAAAAAAAAAAAGHHHHHH", "mrrrrrrhhhhh...gulk..")
+
 gigatoad = Boss("👹Irradiated Toad", 10, 100, 0, .20, [body_slam, smash, bite, ],50,100,[],"straight up ribbing it","glaaagalgaa")
 c_monstrosity = Boss("👹Clockwork Monstrosity", 10, 30, 20, .05, [scream, smash, f_blast, m_blast],50,100,[],"(Clockwork noises)","(sad fleeting clockwork noises)")
 
@@ -939,23 +953,24 @@ iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe.
 
 g_dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 2, 2, ["double_strike"], 1)
 anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"], 2)
-glock = PlayerAttack("Goblin Glock", "You unload your clip...", 2, 8, ["7x_strike"], 3)
-uzi = PlayerAttack("Enchanted Uzi", "You spray and pray...", 3, 10, ["7x_strike","aimless"], 3)
+glock = PlayerAttack("Goblin Glock", "You unload your clip...", 2, 7, ["double_strike","triple_strike"], 3)
+uzi = PlayerAttack("Enchanted Uzi", "You spray and pray...", 2, 10, ["10x_attack","aimless"], 3)
 boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 5, 1, [], 1)
-spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 1, [], 1)
+spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [], 1)
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 8, ["burn","splash"], 3)
 torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,4,["burn"], 1)
 r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",5,7,["omni_hit","aimless"], 3)
-tp_hammer = PlayerAttack("1000LB Hammer","With tremendous effort, you wildly swing the immense hammer...",22,14,["aimless"], 3)
-light_staff = PlayerAttack("Light Staff", "You produce a a blinding light ...",0,6,["daze","hit_all","aimless"], 3)
+tp_hammer = PlayerAttack("1000LB Hammer","With tremendous effort, you wildly swing the immense hammer...",30,18,["aimless"], 3)
+l_staff = PlayerAttack("Light Staff", "You produce a a blinding light ...",0,6,["daze","omni_hit","aimless"], 3)
 flare_gun = PlayerAttack("Flare Gun", "You fire off a blinding flare ...",0,2,["daze"], 2)
 g_launcher = PlayerAttack("Gobomb Launcher", "A sizzling goblin bomb flies wildly through the air...",8,5,["splash","aimless"], 2)
+rapier = PlayerAttack("Rapier","You send out a flurry of attacks...",3,5,["triple_strike"],1)
 
-weapons = [shortsword,iron_battleaxe,g_dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,broadsword]
+weapons = [shortsword,iron_battleaxe,g_dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,broadsword,rapier,l_staff]
 
 #=========================================================================================#
 
-loot_weapons = [g_dagger,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher]
+loot_weapons = [g_dagger,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,rapier,l_staff]
 
 #=========================================================================================#
 
@@ -1271,6 +1286,8 @@ def fight(enemies: list[Enemy]):
                     time.sleep(.66)
                     player_stunned = False  # Reset stun status
                     player_turn = False  # End player's turn
+                    for weapon in active_weapons:
+                        player_weapons.append(weapon)
                     continue
                 print(f"\nHealth: [❤️{player_health}/{player_max_health}]") #Start of player turn
                 for i in range(len(combat_actions)):
@@ -1315,31 +1332,33 @@ def fight(enemies: list[Enemy]):
                     else:
                         print("You're too exhausted to run away!")
 
-                elif combat_actions[chosen_action] == "Attack":
+                elif combat_actions[chosen_action] == "Attack":#--------------Attack action
                     if len(active_weapons)>0:
                         print("")
                         for i in range(len(active_weapons)):
                             weapon = active_weapons[i]
 
                             print(f"[{i + 1}]: {weapon.name} [⚡️{weapon.energy}] [💥{int(weapon.damage * player_damage_multiplier * player_effect_damage_multiplier)}]")
+                        print(f"[{len(active_weapons) + 1}]: Cancel action")
                         try:
                             chosen_attack = int(input("\n Choose an attack:"))
-                            test = active_weapons[chosen_attack-1].energy
-                        except IndexError or ValueError:
-                            #continue
-                            print()
+                            if chosen_attack == (len(active_weapons) + 1):
+                                continue
+                            test = active_weapons[chosen_attack - 1].energy
+                        except (IndexError, ValueError):
+                            print("invalid choice, try again")
+                            continue
                         if player_energy-active_weapons[chosen_attack-1].energy < 0:
                             print("You don't have enough energy for that attack :(")
-                            #continue
                             print()
                         else:
                             if len(enemies) > 1 and "aimless" not in active_weapons[(chosen_attack-1)].keywords:
                                 for i in range(len(enemies)):
-                                    print(f"[{i + 1}]: attack {enemies[i].name}")
+                                    print(f"[{i + 1}]: attack {enemies[i].name} ❤️[{enemies[i].health}/{enemies[i].max_health}]")
                                 try:
                                     chosen_enemy = int(input("Choose an enemy to attack:"))
-                                    player_attack(active_weapons[(chosen_attack-1)], enemies[(chosen_enemy-1)])
-                                except IndexError or ValueError:
+                                    test = player_attack(active_weapons[(chosen_attack-1)], enemies[(chosen_enemy-1)])
+                                except (IndexError, ValueError):
                                     #continue
                                     print()
                             else:
@@ -1417,6 +1436,7 @@ def end_fight(health):
     global player_max_health
     global reward_due
     global active_weapons
+    global is_boss_fight
     for weapon in active_weapons:
         player_weapons.append(weapon)
     if health == player_max_health:
@@ -1433,6 +1453,12 @@ def end_fight(health):
         print("Seems like the enemies were guarding something:")
         reward_due = False
         find_loot()
+
+    if is_boss_fight:
+        print("You see an ominous stairwell, and you have no choice but to descend.")
+        is_boss_fight = False
+        wait(3,3)
+        go_deeper()
     test_for_level_up()
     choose_path()
 
@@ -1454,73 +1480,88 @@ def player_attack(PlayerAttack, Enemy):
     #Hit amount
     hits = 1
 
-    targets = []
-    initial_target = Enemy
+    #Attack amount
+    attacks = 1
 
-    # Aimless
-    if "aimless" in PlayerAttack.keywords:
-            if not targets:
-                if len(active_enemies) > 1:
-                    initial_target = active_enemies[random.randint(1, len(active_enemies) - 1)]
-                else:
-                    initial_target = active_enemies[0]
-
-    target_id = active_enemies.index(initial_target)
-
-    # Attack Keywords
+    #Attack Keywords
     for keyword in PlayerAttack.keywords:
         match keyword:
-            case "double_strike":
-                hits *= 2
-            case "triple_strike":
-                hits *= 3
-            case "7x_strike":
-                hits *= 7
-            case "splash":
-                targets.append(active_enemies[target_id])
-                if target_id -1 >= 0:
-                    targets.append(active_enemies[target_id-1])
-                if target_id +1 < len(active_enemies):
-                    targets.append(active_enemies[target_id+1])
-            case "hit_all":
-                for enemy in active_enemies:
-                    targets.append(enemy)
-            case "weak_splash":
-                if target_id - 1 >= 0:
-                    active_enemies[target_id-1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier)/2))
+            case "double_attack":
+                attacks *= 2
+            case "triple_attack":
+                attacks *= 3
+            case "10x_attack":
+                attacks *= 10
+
+    for a in range (0,attacks):
+        targets = []
+        initial_target = Enemy
+
+        # Aimless
+        if "aimless" in PlayerAttack.keywords:
+                if not targets:
+                    if len(active_enemies) > 1:
+                        initial_target = active_enemies[random.randint(0, len(active_enemies) - 1)]
+                    elif len(active_enemies) == 1:
+                        initial_target = active_enemies[0]
+                    else:
+                        return
+
+        target_id = active_enemies.index(initial_target)
+
+        # Attack Keywords
+        for keyword in PlayerAttack.keywords:
+            match keyword:
+                case "splash":
+                    targets.append(active_enemies[target_id])
+                    if target_id -1 >= 0:
+                        targets.append(active_enemies[target_id-1])
+                    if target_id +1 < len(active_enemies):
+                        targets.append(active_enemies[target_id+1])
+                case "omni_hit":
+                    for enemy in active_enemies:
+                        targets.append(enemy)
+                case "weak_splash":
+                    if target_id - 1 >= 0:
+                        active_enemies[target_id-1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier)/2))
+                case "double_strike":
+                    hits *= 2
+                case "triple_strike":
+                    hits *= 3
+                case "10x_strike":
+                    hits *= 10
 
 
-    if not targets:
-        targets.append(initial_target)
+        if not targets:
+            targets.append(initial_target)
 
-    # Hit Keywords
-    for target in targets:
-        for i in range(0,hits):
-            if target.health <= 0:
-                break
-            # Damage Target
-            time.sleep(.05)
-            print(target.name)
-            result = target.damage(int(PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier))
-            if result != "dodge":
-                for keyword in PlayerAttack.keywords:
-                    match keyword:
-                        case "burn":
-                            apply_effect(burn, target.enemy_effects, target.health, target.name,4,1.0)
-                        case "daze":
-                            apply_effect(daze, target.enemy_effects, target.health, target.name,3,1.0)
-                        case "weak_splash": #this is stupid
-                            if target_id + 1 < len(active_enemies):
-                                active_enemies[target_id + 1].damage(
-                                    int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))
-            else:#this is stupid
-                for keyword in PlayerAttack.keywords:#this is stupid
-                    match keyword:#this is stupid
-                        case "weak_splash":#this is stupid
-                            if target_id + 1 < len(active_enemies):#this is stupid
-                                active_enemies[target_id + 1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))#this is stupid
-        if target.health <= 0:
-            targets.remove(target)
+        # Hit Keywords
+        for target in targets:
+            for i in range(0,hits):
+                if target.health > 0:
+                    # Damage Target
+                    time.sleep(.15)
+                    print(target.name)
+                    result = target.damage(int(PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier))
+                    if result != "dodge":
+                        for keyword in PlayerAttack.keywords:
+                            match keyword:
+                                case "burn":
+                                    apply_effect(burn, target.enemy_effects, target.health, target.name,4,1.0)
+                                case "daze":
+                                    apply_effect(daze, target.enemy_effects, target.health, target.name,3,1.0)
+                                case "weak_splash": #this is stupid
+                                    if target_id + 1 < len(active_enemies):
+                                        active_enemies[target_id + 1].damage(
+                                            int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))
+                    else:#this is stupid
+                        for keyword in PlayerAttack.keywords:#this is stupid
+                            match keyword:#this is stupid
+                                case "weak_splash":#this is stupid
+                                    if target_id + 1 < len(active_enemies):#this is stupid
+                                        active_enemies[target_id + 1].damage(int((PlayerAttack.damage * player_damage_multiplier * player_effect_damage_multiplier) / 2))#this is stupid
+            dispose_corpses(active_enemies)
+
     player_weapons.append(PlayerAttack)
     active_weapons.remove(PlayerAttack)
     time.sleep(1.5)
@@ -1631,7 +1672,7 @@ def increase_strength(amount):
         print(f"⏏️ Your Strength raised from 💢[{player_strength - amount}] to 💢[{player_strength}]")
     else:
         print(f"⏏️⏏️ Eureka! Your Strength raised from 💢[{(player_strength - amount)}] to 💢[{player_strength}]")
-    if player_max_weapons%2 !=0:
+    if player_max_weapons%2 !=0.0:
         time.sleep(1)
         print("\nYou are now strong enough to carry more weapons!")
 
