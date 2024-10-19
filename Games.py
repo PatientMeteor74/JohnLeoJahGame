@@ -132,6 +132,8 @@ class Enemy:
                                 case "stun":
                                     if random.random()<.40:
                                         apply_effect(stun, player_active_effects, player_health, "player", 1, 1.0)
+                                case "infection":
+                                    apply_effect(infection, player_active_effects, player_health, "player", 2, 1.0)
 
 
 
@@ -568,7 +570,7 @@ def randomize_floor_rooms():
     global room_number
 
     room_number = 0
-    floor_rooms = random.randint(1,2)#8,12
+    floor_rooms = random.randint(8,12)#8,12
 
 def go_deeper():
     global depth
@@ -931,7 +933,7 @@ enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_g
 
 #===================================================================================#
 
-enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech]
+enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech,m_frog]
 
 #=====================================BOSSES=======================================#
 
@@ -939,7 +941,7 @@ slomperor = Boss("👹Slomp Emperor", 10, 125, 0, 0.05,[slomp, spit, smash], 50,
 gigagoblin = Boss("👹Goblin Juggernaut", 10, 75, 3, .01, [poo_throw, smash, scream, bite, body_slam, pick_pock, stab], 50, 100, [], "GGRGRRRRAAAAAAAAAAAAAAAAGHHHHHH", "mrrrrrrhhhhh...gulk..")
 
 gigatoad = Boss("👹Irradiated Toad", 10, 100, 0, .20, [body_slam, smash, bite, ],50,100,[],"straight up ribbing it","glaaagalgaa")
-c_monstrosity = Boss("👹Clockwork Monstrosity", 10, 30, 20, .05, [scream, smash, f_blast, m_blast],50,100,[],"(Clockwork noises)","(sad fleeting clockwork noises)")
+c_monstrosity = Boss("👹Clockwork Monstrosity", 10, 30, 20, .05, [scream, smash, f_blast, m_blast],50,100,[],"(Loug ticking and clanging noises)","(tick tock tick.. tock.... tick......")
 
 bosses = [slomperor, gigagoblin, gigatoad, c_monstrosity]
 
@@ -947,7 +949,7 @@ bosses = [slomperor, gigagoblin, gigatoad, c_monstrosity]
 
 #=====================================PLAYER ATTACKS======================================#
 shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 5, 3, [], 1)
-broadsword = PlayerAttack("Broadsword","You have heave your broadsword",5,7,["weak_splash"],1)
+broadsword = PlayerAttack("Broadsword","You have heave your broadsword",5,6,["weak_splash"],1)
 stick = PlayerAttack("Whacking Stick", "You whack that fella head smoove off...", 1, 0, [], 1)
 iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 8, 5, [], 1)
 
@@ -955,7 +957,7 @@ g_dagger = PlayerAttack("Goblin Dagger", "You slash twice with your dagger...", 
 anvil_staff = PlayerAttack("Anvil Staff", "You conjure an anvil high in the air...", 6, 4, ["stun"], 2)
 glock = PlayerAttack("Goblin Glock", "You unload your clip...", 2, 7, ["double_strike","triple_strike"], 3)
 uzi = PlayerAttack("Enchanted Uzi", "You spray and pray...", 2, 10, ["10x_attack","aimless"], 3)
-boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 5, 1, [], 1)
+boomerang = PlayerAttack("Boomerang", "You chuck your boomerang at they noggin, HARD...", 4, 1, [], 1)
 spiky_stick = PlayerAttack("Spiky Stick", "You smach that fella head smoove off spikily...", 2, 0, [], 1)
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 8, ["burn","splash"], 3)
 torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",2,4,["burn"], 1)
@@ -1098,7 +1100,7 @@ def player_effect_tick():
 
 player_weapons = [shortsword,iron_battleaxe,stick,broadsword]
 active_weapons = []
-player_max_weapons = 2.5
+player_max_weapons = 3.5
 player_accessories = []
 item_inventory = []
 
@@ -1192,7 +1194,7 @@ def add_energy(amount, respect_max):
     if respect_max == True and (player_energy + amount) > player_max_energy:
         amount = (player_max_energy - player_energy)
 
-    if random.random() < 0.05 + (player_intelligence * 0.025):
+    if random.random() < 0.05 + (player_intelligence * 0.05):
         inspiration = True
         respect_max = False
         amount *= 2
@@ -1245,6 +1247,7 @@ def gain_xp(amount):
         return f"💠{gained_amount}"
     else:
         return f"💠{int(gained_amount/2)} and eureka! An additional 💠{int(gained_amount/2)}"
+
 #---------------------------------Fighting-Enemy-------------------------------------#
 combat_actions = ["Attack", "Rest", "Run Away", "Use Item"]
 def fight(enemies: list[Enemy]):
@@ -1317,7 +1320,7 @@ def fight(enemies: list[Enemy]):
                         print(f"-⚡️{math.floor(player_max_energy / 3)}")
                         print("You pee your pants a little and sprint towards the first escape you see...")
                         time.sleep(1.0)
-                        player_energy -= math.floor(player_max_energy / 10)
+                        player_energy -= math.floor(player_max_energy / 3)
                         if random.random() <.65:
                             active_enemies = []
                             reward_due = False
@@ -1563,6 +1566,7 @@ def player_attack(PlayerAttack, Enemy):
             dispose_corpses(active_enemies)
 
     player_weapons.append(PlayerAttack)
+    if
     active_weapons.remove(PlayerAttack)
     time.sleep(1.5)
 
@@ -1646,7 +1650,6 @@ def test_for_level_up():
 
     if xp >= xp_needed:
         level_up()
-        print (xp_needed)
         test_for_level_up()
 
 #------------------------------Stat-Increase-System-----------------------------------------#
@@ -1657,7 +1660,7 @@ def increase_strength(amount):
     global player_max_weapons
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .025):
+    if random.random() < 0.05 + (player_intelligence * .05):
         inspiration = 2
 
     amount *= inspiration
@@ -1681,7 +1684,7 @@ def increase_dexterity(amount):
     global player_crit
     global player_dodge
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .025):
+    if random.random() < 0.05 + (player_intelligence * .05):
         inspiration = 2
 
     amount *= inspiration
@@ -1703,7 +1706,7 @@ def increase_vitality(amount):
     global player_max_energy
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .025):
+    if random.random() < 0.05 + (player_intelligence * .05):
         inspiration = 2
 
     amount *= inspiration
@@ -1723,7 +1726,7 @@ def increase_intelligence(amount):
     global player_intelligence
 
     inspiration = 1
-    if random.random() < 0.05 + (player_intelligence * .025):
+    if random.random() < 0.05 + (player_intelligence * .05):
         inspiration = 2
 
     amount *= inspiration
