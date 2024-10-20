@@ -58,7 +58,7 @@ stat_enemies_killed = 0
 stat_damage_taken = 0
 stat_damage_avoided = 0
 stat_energy_used = 0
-depth = 1
+depth = 0
 
 #-----------------------------------------------------------------------------------
 
@@ -153,8 +153,8 @@ class Enemy:
                                 case "infection":
                                     apply_effect(infection, player_active_effects, player_health, "player", 2, 1)
                                 case "frog_summon":
-                                    active_enemies.insert(0,r_toad)
-                                    active_enemies.append(r_toad)
+                                    active_enemies.insert(0,create_enemy(r_toad))
+                                    active_enemies.append(create_enemy(r_toad))
                                 case "brittle":
                                     apply_effect(brittle, player_active_effects, player_health, "player", 2, 1)
                                 case "exhaust":
@@ -253,7 +253,7 @@ class Boss(Enemy):
 
     def damage(self, amount):
         super().damage(amount)
-        if self.health <= self.max_health / 3:
+        if self.health <= self.max_health / 3 and self.health>0:
             self.enrage()
 
     def die(self):
@@ -489,15 +489,16 @@ class Item:
         global player_health
         global player_energy
         global xp_needed
-        global exhaust
+        global player_active_effects
         match self.item_type:
             case "health":
                 heal_player(self.effect_amount)
             case "energy":
                 add_energy(self.effect_amount, False)
-                if exhaust>0:
-                    exhaust = 0
-                    print("Your exhaustion was removed")
+                for effect in player_active_effects:
+                    if effect == "Exhaust":
+                        player_active_effects.remove(effect)
+
 
             case "experience":
                 gain_xp(self.effect_amount+(xp_needed*.3))
@@ -582,9 +583,10 @@ def choose_path():
         global player_turn
 
         if 1 <=choice <= len(spawned_rooms):
+            chosen = True
             selected_room = spawned_rooms[choice - 1]
             selected_room.enter()
-            chosen = True
+
 
         elif choice == len(spawned_rooms) + 1:
             print(f"[1]: 🔎 See Stats\n"
@@ -909,7 +911,20 @@ def add_active_enemies(min_weight,max_weight):
             )
 
         active_enemies.append(new_enemy)
-
+#--------------------------------------------------------------------------------------#
+def create_enemy(base_enemy):
+    new_enemy = Enemy(
+        base_enemy.name,
+        base_enemy.size,
+        base_enemy.health,
+        base_enemy.armor,
+        base_enemy.dodge,
+        base_enemy.attacks,
+        base_enemy.average_gold,
+        base_enemy.average_xp,
+        base_enemy.keywords,
+    )
+    return new_enemy
 #--------------------------------------------------------------------------------------#
 def game_init():
     print("Welcome to freaky text dungeon, mmm..........")
@@ -1002,8 +1017,14 @@ enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_g
 
 #===================================================================================#
 
+#=====================================FLOOR 4 ENEMIES=======================================#
+
+enemies_floor_4 = [ghoulem,flies_man,goblin_mech,grogus]
+
+#===================================================================================#
+
 enemies = [goblin, skele, slomp_monster, grogus, living_ore, clkwrk_gremlin, wailing_wisp, lost_serf, rob_goblin, ghoulem, angry_weapons, goblin_mech,m_frog]
-enemy_lists = [enemies_floor_1,enemies_floor_2,enemies_floor_3]
+enemy_lists = [enemies_floor_1,enemies_floor_2,enemies_floor_3,enemies_floor_4]
 
 #=====================================BOSSES=======================================#
 
@@ -1019,7 +1040,7 @@ bosses = [slomperor, gigagoblin, gigatoad, c_monstrosity]
 
 #=====================================PLAYER ATTACKS======================================#
 shortsword = PlayerAttack("Simple Shortsword", "You swing your sword...", 5, 3, [], 1)
-broadsword = PlayerAttack("Broadsword","You have heave your broadsword",5,6,["weak_splash"],1)
+greatsword = PlayerAttack("Greatsword","You have heave your greatsword",5,6,["weak_splash"],1)
 stick = PlayerAttack("Whacking Stick", "You whack that fella head smoove off...", 1, 0, [], 1)
 iron_battleaxe = PlayerAttack("Battleaxe", "You forcefully swing your battleaxe...", 8, 5, [], 1)
 
@@ -1041,7 +1062,7 @@ fly_jar = PlayerAttack("Jar of Flies", "You release the flies upon your foes..."
 g_amoeba = PlayerAttack("Giant Amoeba", "You goopily swing the giant microbe...",1,3,["severe_infection"], 2)
 
 
-weapons = [shortsword,iron_battleaxe,g_dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,broadsword,rapier,l_staff,flare_gun,fly_jar,g_amoeba]
+weapons = [shortsword,iron_battleaxe,g_dagger,stick,anvil_staff,glock,uzi,boomerang,spiky_stick,f_bucket,torch,r_scythe,tp_hammer,g_launcher,greatsword,rapier,l_staff,flare_gun,fly_jar,g_amoeba]
 
 #=========================================================================================#
 
@@ -1203,7 +1224,7 @@ def player_effect_tick():
 
 #Player Inventory
 
-player_weapons = [shortsword,iron_battleaxe,stick,broadsword]
+player_weapons = [shortsword,iron_battleaxe,stick,greatsword]
 
 active_weapons = []
 player_max_weapons = 3.5
@@ -1338,11 +1359,11 @@ def recharge_energy():
             exhaust -= 1
         #print(f"You're exhausted and lose ⚡️{lost_energy}")
 
-    """if rested > 0 and exhaust <0:
+    if rested > 0:
         print(f"You are well rested...")
         add_energy(rested, False)
         rested = 0
-"""
+
 
 def gain_gold(amount):
     global player_gold
@@ -1442,7 +1463,7 @@ def fight(enemies: list[Enemy]):
                         print("You pee your pants a little and sprint towards the first escape you see...")
                         time.sleep(1.0)
                         player_energy -= math.floor(player_max_energy / 3)
-                        if random.random() <.65:
+                        if random.random() <.65 and not is_boss_fight:
                             active_enemies = []
                             reward_due = False
                             escape_room = rooms[random.randint(0, len(rooms)) - 1]
