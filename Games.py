@@ -2,6 +2,7 @@ import math
 import time
 import random
 from ast import Index
+from dbm import error
 from math import floor
 from random import randint
 from time import sleep
@@ -153,15 +154,18 @@ class Enemy:
                                 case "Infectious 1":
                                     apply_effect(infection, player_active_effects, player_health, "player", 2, 1)
                                 case "frog_summon":
-                                    if len(active_enemies) ==1:
-                                        active_enemies.insert(0, create_enemy(r_toad))
-                                        active_enemies.append(create_enemy(r_toad))
-                                    elif active_enemies[2] == gigatoad and len(active_enemies) ==2:
-                                        active_enemies.append(create_enemy(r_toad))
-                                    elif active_enemies[1] == gigatoad and len(active_enemies) ==2:
-                                        active_enemies.insert(0,create_enemy(r_toad))
-                                    else:
-                                        print("His froggies are already with him")
+                                    try:
+                                        if len(active_enemies) ==1:
+                                            active_enemies.insert(0, create_enemy(r_toad))
+                                            active_enemies.append(create_enemy(r_toad))
+                                        elif active_enemies[2] == gigatoad and len(active_enemies) ==2:
+                                            active_enemies.append(create_enemy(r_toad))
+                                        elif active_enemies[1] == gigatoad and len(active_enemies) ==2:
+                                            active_enemies.insert(0,create_enemy(r_toad))
+                                        else:
+                                            print("His froggies are already with him")
+                                    except IndexError:
+                                        print("shlaboingus")
 
 
 
@@ -338,7 +342,7 @@ class Room:
             case "rest":
                 print("You set up a small camp to recover health and energy")
                 rested = 10
-                heal_player((player_max_health - player_health) * random.uniform(0.5,1.0))
+                heal_player((player_max_health - player_health) * random.uniform(0.2,0.3))
                 choose_path()
             case "loot":
                 print("You drool a little at the sight of:")
@@ -416,9 +420,9 @@ health_potion = Item("Health Potion", "Restores a small amount of health.", "hea
 large_health_potion = Item("Large Health Potion", "Heals a substantial amount of health", "health", 50, 75)
 enormous_health_potion = Item("Enormous Health Potion", "Heals you to full health", "health", 110, 110)
 energy_potion = Item("Energy Potion", "Gain .", "energy", player_max_energy, 10)
-tome_o_knoledge = Item("Tome of Knoledge","Grants you XP","experience",30,45)
+tome_o_knowledge = Item("Tome of Knowledge","Grants you XP","experience",30,45)
 
-items = [health_potion, large_health_potion, enormous_health_potion, energy_potion, tome_o_knoledge]
+items = [health_potion, large_health_potion, enormous_health_potion, energy_potion, tome_o_knowledge]
 
 #------------------------------------Rooms---------------------------------------------#
 combat_room = Room("♢ A path with the chatters and growls of enemies emanating from within.", "combat", .5, "You stumble into another room full of enemies!")
@@ -426,7 +430,7 @@ shop_room = Room("♢ A well-lit corridor with a sign hanging labelled 'The Shop
 elite_room = Room("♢ A heavily fortified door with ominous shadows visible in the light peeking through below.", "elite_combat", .2, "You stumbled into a massively dangerous room!")
 rest_room = Room("♢ An abandoned campsite which appears safe for resting.", "rest", .1, "You stumble into an abandoned campsite...")
 loot_room = Room("♢ A dark room with a promising glimmer in the center.", "loot", .1, "You stumble into a room with loot!")
-encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", 100.1, "You stumble into a foggy, mysterious room.")
+encounter_room = Room("♢ A shrouded room, you can barely glimpse a silhouette in the fog.", "mystery", .1, "You stumble into a foggy, mysterious room.")
 boss_room = Room("⛋ A huge doorway dirtied with old blood. Prepare yourself.", "boss", .005, "You stumble into something even worse...")
 
 rooms = [combat_room, shop_room, elite_room, rest_room, loot_room, encounter_room, boss_room]
@@ -620,7 +624,7 @@ def find_loot():
                 case "tome":
                     print("A Tome of Knowledge!")
                     time.sleep(1)
-                    item_inventory.append(tome_o_knoledge)
+                    item_inventory.append(tome_o_knowledge)
 
 #--------------------------------------------------------------------------------------#
 
@@ -650,6 +654,16 @@ def mystery_encounter():
         print(f"{player} hand: {hand} (total: {calculate_hand(hand)})")
         time.sleep(1)
 
+    def get_choice(prompt, valid_choices):
+        """ Helper function to get a valid choice from the user. """
+        while True:
+            try:
+                choice = int(input(prompt))
+                if choice in valid_choices:
+                    return choice
+                raise ValueError
+            except ValueError:
+                print(f"Enter a valid option: {valid_choices}")
 
     # -----------------------------------ENCOUNTER CALLS--------------------------------#
 
@@ -699,7 +713,7 @@ def mystery_encounter():
             while in_library == True:
 
                 if choice == "1":
-                    print(f"The book feeds your mind with knowledge from beyond, +{gain_xp(random.randint(6,8) * player_level)}.\n")
+                    print(f"The book feeds your mind with knowledge from beyond, +{gain_xp(random.randint(6,8) * (0.5 + player_level / 2))}\n")
 
                 elif random.random()< 0.66:
                     print("You run past countless aisles of bookshelves, but feel you are exactly where you were before...\n")
@@ -750,63 +764,59 @@ def mystery_encounter():
 
 
         case "The Gambler":
+            # Initial setup
             play_bj = False
             print("\nYou find a man waiting at a table surrounded by gold...")
             print('Dealer: "A game of blackjack?"\n')
             time.sleep(1.5)
-            choice = 3
-            while choice != 1 or choice != 2:
-                try:
-                    bet = max(10, int(player_gold * 0.25))
-                    print(f"Current Gold: 🪙{player_gold}")
-                    print(f"[1] Of course! (Bet: 🪙{bet})\n"
-                          "[2] No, thanks")
 
-                    choice = int(input("Choose option: "))
+            # Get initial player choice
+            choice = get_choice(
+                "Current Gold: 🪙{}\n[1] Of course! (Bet: 🪙{})\n[2] No, thanks\nChoose option: ".format(player_gold,max(10, int(player_gold * 0.25))),
+                [1, 2])
 
-                    if choice != 1 and choice != 2:
-                        raise ValueError  # Raise an error if the input is not 1 or 2
-                except ValueError:
-                    print("Enter a valid option: 1 or 2")
-            match choice:
-                case 1:
-                    if player_gold >= bet:
-                        play_bj = True
-                    else:
-                        print('Dealer: "No money, no game"')
-                case 2:
-                    print('"Dealer: Youre missing out..."')
-            while choice == 1 or 2:
+            # Handle player's initial decision
+            if choice == 1:
+                bet = max(10, int(player_gold * 0.25))
+                if player_gold >= bet:
+                    play_bj = True
+                else:
+                    print('Dealer: "No money, no game"')
+            elif choice == 2:
+                print('Dealer: "You’re missing out..."')
 
+            # Main game loop
+            while play_bj:
+                play_bj = False  # Reset to false after one round
+                player_gold -= bet
+                deck = create_deck()
 
-                # Player turn
-                if play_bj:
-                    play_bj = False
-                    player_gold -= 10
-                    deck = create_deck()
-                    player_hand = [deck.pop(), deck.pop()]
-                    dealer_hand = [deck.pop(), deck.pop()]
+                # Deal cards
+                player_hand = [deck.pop(), deck.pop()]
+                dealer_hand = [deck.pop(), deck.pop()]
 
-                    display_hand("You", player_hand)
-                    time.sleep(1)
-                    display_hand("Dealer", [dealer_hand[0], "?"])
-                    time.sleep(1)
-                    while calculate_hand(player_hand) < 21:
-                        action = int(input("[1] Hit \n"
-                                       "[2] Stand"))
-                        if action == 1:
-                            player_hand.append(deck.pop())
-                            time.sleep(1)
-                            display_hand("You", player_hand)
-                            if calculate_hand(player_hand) > 21:
-                                print("You busted! Dealer wins.")
-                                print('Dealer: (counting his pile of coins) "Better luck next time"')
-                        elif action == 2:
+                display_hand("You", player_hand)
+                time.sleep(.5)
+                display_hand("Dealer", [dealer_hand[0], "?"])
+                time.sleep(.5)
+
+                # Player's turn
+                while calculate_hand(player_hand) < 21:
+                    action = get_choice("[1] Hit\n[2] Stand\nChoose action: ", [1, 2])
+                    if action == 1:
+                        player_hand.append(deck.pop())
+                        time.sleep(.5)
+                        display_hand("You", player_hand)
+                        if calculate_hand(player_hand) > 21:
+                            print("You busted! Dealer wins.")
+                            print('Dealer: (counting his pile of coins) "Better luck next time"')
                             break
-                        else:
-                            print("Not available action")
-                    # Dealer turn
-                    while calculate_hand(dealer_hand) < 17 and calculate_hand(player_hand)<22:
+                    elif action == 2:
+                        break
+
+                # Dealer's turn if player hasn't busted
+                if calculate_hand(player_hand) <= 21:
+                    while calculate_hand(dealer_hand) < 17:
                         dealer_hand.append(deck.pop())
 
                     display_hand("Dealer", dealer_hand)
@@ -816,49 +826,51 @@ def mystery_encounter():
                     dealer_total = calculate_hand(dealer_hand)
 
                     if dealer_total > 21:
-                        time.sleep(1)
+                        time.sleep(.5)
                         print("Dealer busted! You win.")
-                        print(f'Dealer: "Here is you prize..." +{gain_gold(bet*2)}')
-                    elif player_total > dealer_total and player_total<22:
-                        time.sleep(1)
+                        print(f'Dealer: "Here is your prize..." +{gain_gold(bet * 2)}')
+                    elif player_total > dealer_total:
+                        time.sleep(.5)
                         print("You win!")
-                        print(f'Dealer: "Here is you prize..." +{gain_gold(bet*2)}')
+                        print(f'Dealer: "Here is your prize..." +{gain_gold(bet * 2)}')
                     elif player_total == dealer_total:
-                        time.sleep(1)
+                        time.sleep(.5)
                         print("It's a tie!")
                         print(f'Dealer: "Here is your money back..." +{gain_gold(bet)}')
                     else:
-                        time.sleep(1)
+                        time.sleep(.5)
                         print("Dealer wins.")
                         print('Dealer: (counting his pile of coins) "Better luck next time"')
+
+                # Dealer's random behavior
+                if random.random() < 0.15:
+                    print('Dealer: (Starts counting massive pile of coins)')
+                    for i in range(1, 4):
+                        time.sleep(.5)
+                        print(f'Dealer: "{i}..."')
+                    time.sleep(2)
+                    print("You get bored and decide to leave.")
+                    break
+
+                # Ask if the player wants to play again
+                print("You feel a sudden urge to play again\n")
+                time.sleep(1)
+                bet = max(10, int(player_gold * 0.25))
+                choice = input(f"Current Gold: 🪙{player_gold}\n[1] Give in. (Bet: 🪙{bet})\n[2] Cower from opportunity\nChoose option: ")
+
+                if choice == "1":
+                    print('Dealer: "Again it is..."')
+                    play_bj = True  # Continue the loop if player chooses to play again
+                elif choice == "2":
+                    print('Dealer: "You’re missing out..."')
                     time.sleep(1)
-                    if random.random()<.15:
-                        print('Dealer:(Starts counting massive pile of coins)')
-                        for i in range(1,4):
-                            time.sleep(1)
-                            print(f'Dealer:"{i}..."')
-                        time.sleep(2)
-                        print("You get bored and decide to leave")
-                        break
-                    print("You feel a sudden urge to play again\n")
-                    time.sleep(1.5)
-
-                    bet = max(10, player_gold * .25)
-
-                    print(f"Current Gold: 🪙{player_gold}")
-                    print(f"[1] Give in.(Bet: 🪙{bet})\n"
-                          "[2] Cower from opportunity")
-                    choice1 = int(input("Choose option:"))
-                    match choice1:
-                        case 1:
-                            continue
-                        case 2:
-                            print('Dealer: "Youre missing out..."')
-                            time.sleep(1)
-                            break
-                        case _:
-                            print("You stumble on your words\n"
-                                  'Dealer: "Again it is..."')
+                    break
+                else:
+                    # Handle invalid input and include the "stumbling on words" scenario
+                    print("You stumble on your words...")
+                    time.sleep(1)
+                    print('Dealer: (chuckling) "Again it is..."')
+                    play_bj = True  # Continue the game regardless of the invalid input
 
 
 
@@ -982,7 +994,7 @@ d_curse = EnemyAttack("Death Curse","channels the power of the death realm...",9
 f_ravage = EnemyAttack("Fly Ravage","casts a swarm of flies toward you...",1,["Triple Strike", "Infectious 1"])
 s_slash = EnemyAttack("Sword Slash","swings its sword...",5,[])
 rage = EnemyAttack("Rage","enters a rage...",0,["Strength"])
-chomp = EnemyAttack("Chomp","chomps down on you...",12,[])
+chomp = EnemyAttack("Chomp","chomps down on you...",8,[])
 snipe = EnemyAttack("Snipe","takes the shot...",17,["cd_1"])
 scope = EnemyAttack("Scope","steadies it's aim...",0,[])
 
@@ -991,7 +1003,7 @@ enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scr
 #--Giga Toad--#2
 
 frog_call = EnemyAttack("Frog Call","unleashes a froggie cronie call...",0,["frog_summon"])
-leap = EnemyAttack("Leap","leaps above you, smashing down...",10,["Stun"])
+leap = EnemyAttack("Leap","leaps above you, smashing down...",8,["Stun"])
 mega_tongue = EnemyAttack("Mega Tongue","lashes it tongue at your face...",5,["Infectious 2"])
 #-------------#
 
