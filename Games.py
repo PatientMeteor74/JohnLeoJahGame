@@ -3,7 +3,7 @@ import time
 import random
 from ast import Index
 from dbm import error
-from math import floor
+from math import floor, log10
 from random import randint
 from time import sleep
 from turtledemo.forest import randomize, start
@@ -13,7 +13,8 @@ from turtledemo.forest import randomize, start
 player_health = 100
 player_max_health = 100
 player_armor = 0
-player_dodge = 0.05
+player_raw_dodge = 0.05
+player_dodge = 0
 player_damage_multiplier = 1.0
 player_effect_damage_multiplier = 1.0
 player_effect_damage_taken_multiplier = 1.0
@@ -59,12 +60,12 @@ stat_enemies_killed = 0
 stat_damage_taken = 0
 stat_damage_avoided = 0
 stat_energy_used = 0
-depth = 0
+depth = 2
 
 #-----------------------------------------------------------------------------------
 
 class Enemy:
-    def __init__(self, name, size, health, armor, dodge, attacks, average_gold, average_xp, keywords):
+    def __init__(self, name, size, health, armor, raw_dodge, attacks, average_gold, average_xp, keywords):
         self.name = name
         self.size = size
         self.health = health
@@ -75,12 +76,13 @@ class Enemy:
         self.average_xp = average_xp
         self.max_health = health
         self.armor = armor
-        self.dodge = dodge
+        self.raw_dodge = raw_dodge
         self.keywords = keywords
         self.enemy_effects = []
         self.attacks_in_turn = 1
         self.one_cd = []
 
+    dodge = 0.0
 
 
     def attack(self):
@@ -115,7 +117,8 @@ class Enemy:
                             print(f"💥 The {self.name} inflicted {int(attack.damage / 2)} damage onto itself! [❤️{self.health}/{self.max_health}3]")
                             if self.health < 1:
                                 self.die()
-
+                        case "Invisible":
+                            apply_effect(invisible,self.enemy_effects,self.health,self.name,2,1)
 
 
             print(f"\nThe {self.name} {self.attacks[attack_id].message}")
@@ -183,9 +186,12 @@ class Enemy:
 
 
 
+
     def damage(self, amount):
         crit = False
         global stat_damage_dealt
+
+        self.dodge = calc_dodge(self.raw_dodge)
 
         result = "hit"
 
@@ -321,7 +327,7 @@ class Room:
 
         match self.name:
             case "combat":
-                add_active_enemies(2, 3)
+                add_active_enemies(2 + depth, 3 + depth * 2)
                 random.shuffle(active_enemies)
                 player_turn = True
                 if random.random() < .1:
@@ -333,7 +339,7 @@ class Room:
                 open_shop()
                 choose_path()
             case "elite_combat":
-                add_active_enemies(5, 7)
+                add_active_enemies(5 + depth * 2, 7 + depth * 4)
                 random.shuffle(active_enemies)
                 player_turn = True
                 reward_due = True
@@ -926,17 +932,7 @@ def add_active_enemies(min_weight,max_weight):
 
         total_weight -= base_enemy.size
 
-        new_enemy = Enemy(
-            base_enemy.name,
-            base_enemy.size,
-            base_enemy.health,
-            base_enemy.armor,
-            base_enemy.dodge,
-            base_enemy.attacks,
-            base_enemy.average_gold,
-            base_enemy.average_xp,
-            base_enemy.keywords,
-            )
+        new_enemy = create_enemy(base_enemy)
 
         active_enemies.append(new_enemy)
 #--------------------------------------------------------------------------------------#
@@ -946,7 +942,7 @@ def create_enemy(base_enemy):
         base_enemy.size,
         base_enemy.health,
         base_enemy.armor,
-        base_enemy.dodge,
+        base_enemy.raw_dodge,
         base_enemy.attacks,
         base_enemy.average_gold,
         base_enemy.average_xp,
@@ -997,6 +993,11 @@ rage = EnemyAttack("Rage","enters a rage...",0,["Strength"])
 chomp = EnemyAttack("Chomp","chomps down on you...",8,[])
 snipe = EnemyAttack("Snipe","takes the shot...",17,["cd_1"])
 scope = EnemyAttack("Scope","steadies it's aim...",0,[])
+p_slam = EnemyAttack("Phase Slam","rapidly phases toward you, then vanishes...",4,["Invisible"])
+decapitate = EnemyAttack("Decapitate","swings ruthlessly towards your head...",12,["cd_1"])
+heavy_slice = EnemyAttack("Heavy Slash","forcefully heaves its blade at you...",8,[])
+onslaught = EnemyAttack("Onslaught","rushes you with an onslaught of different attacks...",3,["Triple Strike","Double Strike"])
+digest = EnemyAttack("Digest","attempts to consume you...",15,["Triple Strike","cd_10"])
 
 enemy_attacks = [slomp, stab, d_slash, body_slam, b_rage, expl_cask, b_roll, scream, bite,s_slam, poo_throw, pick_pock, smash, dice, slice, f_blast, m_blast]
 #--------------------------------------BOSS ATTACKS---------------------------------------#
@@ -1014,41 +1015,45 @@ mega_slomp = EnemyAttack("Mega slomp","casts a glorg of slomp at you...",8,["Exh
 #=========================================================================================#
 
 #=====================================FLOOR 1 ENEMIES=======================================#
-goblin = Enemy("🔺Grouchy Goblin",               1, 18, 2, 0.1,[stab,d_slash, bite], 2,8,[])
-skele = Enemy("🔺Skeleton Solider",              1, 22,4, 0.05,[stab,b_rage],1,12,[])
+goblin = Enemy("🔺Grouchy Goblin",               1, 18, 2, 0.15,[stab,d_slash, bite], 2,8,[])
+skele = Enemy("🔺Skeleton Solider",              1, 22,4, 0.1,[stab,b_rage],1,12,[])
 slomp_monster = Enemy("🔺Slompster",             2, 60, 0, 0,[slomp, bite],10,20,[])
 grogus = Enemy("🔺Grogus",                       3, 90, 0, 0.05, [body_slam,expl_cask,body_slam,b_rage],20,25,[])
 living_ore = Enemy("🔺Living Ore",               2, 24, 10,0, [body_slam, scream],20,8,[])
 clkwrk_gremlin = Enemy("🔺Clockwork Gremlin",    1, 6, 10, 0.1, [bite],2,8,[])
-wailing_wisp = Enemy("🔺Wailing Wisp",           1, 2, 0, 0.66, [scream,m_blast],0,12,[])
+wailing_wisp = Enemy("🔺Wailing Wisp",           1, 1, 0, 1.8, [scream,m_blast],0,12,[])
 lost_serf = Enemy("🔺Lost Serf",                 1, 18,0,.05,[b_rage,s_slam,poo_throw],8,6,[])
 rob_goblin = Enemy("🔺Goblin Robber",            1, 13,2,.25,[stab,pick_pock],15,4,[])
 angry_weapons = Enemy("🔺Pile of Angry Weapons", 2, 13, 6, 0.25,[slice, dice], 0,10,["Weapon Drop"])
 goblin_mech = Enemy("🔺Goblin Mech",             3, 60, 8, 0,[f_blast, smash], 20,15,[])
-m_frog = Enemy("🔺Mutant Frog",                  1, 13,0,.2,[tongue,bite,spit],5,6,[])
-r_toad = Enemy("🔺Royal Toad",                   1, 14,4,.1,[bite,s_slash,rage,poo_throw],0,0,[]) #Boss exclusive enemy
+m_frog = Enemy("🔺Mutant Frog",                  1, 13,0,.33,[tongue,bite,spit],5,6,[])
+r_toad = Enemy("🔺Royal Toad",                   1, 14,4,.15,[bite,s_slash,rage,poo_throw],0,0,[]) #Boss exclusive enemy
 
 enemies_floor_1 = [goblin, skele, slomp_monster,living_ore,clkwrk_gremlin,wailing_wisp,lost_serf,rob_goblin,angry_weapons]
 
 #=====================================FLOOR 2 ENEMIES=======================================#
-ghoulem = Enemy("🔺Gravestone Ghoulem",           4,150,2,0,[stab,smash, m_blast],35,45,[])
-s_bandit = Enemy("🔺Shrouded Bandit",             2,24,0,.2,[slice,pick_pock,dice],18,8,[])
-l_prisoner = Enemy("🔺Lost Prisoner",             1,36,0,.05,[b_rage,body_slam],10,12,[])
-clkwrk_wizard = Enemy("🔺Clockwork Wizard",       2,24,10,.1,[m_blast,d_curse],14,22,[])
-flies_man = Enemy("🔺Flies Man",                  3,30,0,.1,[bite,poo_throw,f_ravage],20,35,[])
-c_markman = Enemy("🔺Cloaked Marksman",           2,20,0,.3,[snipe,scope],8,12,[])
+ghoulem = Enemy("🔺Gravestone Ghoulem",          4,125,2,0,[stab,smash, m_blast],35,45,[])
+s_bandit = Enemy("🔺Shrouded Bandit",            2,24,0,.33,[slice,pick_pock,dice],18,8,[])
+l_prisoner = Enemy("🔺Lost Prisoner",            2,36,0,.05,[b_rage,body_slam],10,12,[])
+clkwrk_wizard = Enemy("🔺Clockwork Wizard",      3,24,10,.1,[m_blast,d_curse],14,22,[])
+flies_man = Enemy("🔺Flies Man",                 3,30,0,.1,[bite,poo_throw,f_ravage],20,35,[])
+c_markman = Enemy("🔺Cloaked Marksman",          3,20,0,.5,[snipe,scope],8,12,[])
 
 enemies_floor_2 = [clkwrk_gremlin, wailing_wisp, rob_goblin,angry_weapons, ghoulem, goblin_mech, grogus,s_bandit,clkwrk_wizard,l_prisoner,flies_man,c_markman]
 
 #=====================================FLOOR 3 ENEMIES=======================================#
 
-enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, wailing_wisp, rob_goblin, angry_weapons, ghoulem, goblin_mech, grogus,clkwrk_wizard,s_bandit]
+s_spectre = Enemy("🔺Screaming Spectre", 3,30,0,0.5,[p_slam,m_blast,d_curse,scream],0,26,[])
+l_champion = Enemy("🔺Lost Champion", 4,50,5,0.5,[decapitate,heavy_slice,onslaught],30,75,[])
+
+
+enemies_floor_3 = [slomp_monster,living_ore, clkwrk_gremlin, rob_goblin, angry_weapons, ghoulem, grogus,clkwrk_wizard,s_bandit,s_spectre]
 
 #===================================================================================#
 
 #=====================================FLOOR 4 ENEMIES=======================================#
 
-enemies_floor_4 = [ghoulem,flies_man,goblin_mech,grogus]
+enemies_floor_4 = [ghoulem,flies_man,goblin_mech,grogus,s_spectre,l_champion]
 
 #===================================================================================#
 
@@ -1058,18 +1063,23 @@ enemy_lists = [enemies_floor_1,enemies_floor_2,enemies_floor_3,enemies_floor_4]
 #=====================================BOSSES=======================================#
 
 slomperor = Boss("👹Slomp Emperor", 10, 250, 0, 0.05,[slomp, spit, smash,chomp,mega_slomp], 50,100,[], "I vow the whole world will be one day slomped... starting with YOU!!!", "Argh... At least I never ran a... democracy... ")
-gigagoblin = Boss("👹Goblin Juggernaut", 10, 150, 3, .01, [poo_throw, smash, scream, bite, body_slam, pick_pock, stab], 50, 100, [], "GGRGRRRRAAAAAAAAAAAAAAAAGHHHHHH", "mrrrrrrhhhhh...gulk..")
+gigagoblin = Boss("👹Goblin Juggernaut", 10, 150, 3, .015, [poo_throw, smash, scream, bite, body_slam, pick_pock, stab], 50, 100, [], "GGRGRRRRAAAAAAAAAAAAAAAAGHHHHHH", "mrrrrrrhhhhh...gulk..")
 
-gigatoad = Boss("👹Irradiated Toad", 10, 200, 0, .20, [frog_call,leap,mega_tongue,chomp],50,100,[],"*stomp* *stomp* Stay away from my marsh, ribbit","glaaagalgaa")
-c_monstrosity = Boss("👹Clockwork Monstrosity", 10, 60, 32, .05, [scream, smash, f_blast, m_blast],50,100,[],"(Loud ticking and clanging noises)","(tick tock tick.. tock.... tick......")
+gigatoad = Boss("👹Toad Titan", 10, 200, 0, .33, [frog_call,leap,mega_tongue,chomp],50,100,[],"*stomp* *stomp* Stay away from my marsh, ribbit","glaaagalgaa")
+c_monstrosity = Boss("👹Clockwork Monstrosity", 10, 60, 32, .05, [scream, smash, f_blast, m_blast],50,100,[],"*Loud ticking and clanging noises*","*tick tock tick.. tock.... tick......*")
 
-bosses = [gigatoad]#c_monstrosity,slomperor, gigagoblin
+lost_king = Boss("👹Lost King", 10, 200, 8, .5, [onslaught,decapitate,m_blast,d_curse],50,150,[],"Rejoice, for in death you shall become my servant.","Oh...")
+the_flesh = Boss("👹The Infinite Flesh", 10, 2000, 0, 0, [digest,wait],50,150,[],"Rejoice, for in death you shall become my servant.","Oh...")
 
-bosses_floor_1 = [gigatoad]#slomperor, gigagoblin
 
-bosses_floor_2 = [gigatoad]#, c_monstrosity
 
-bosses_floor_3 = [gigatoad]# c_monstrosity
+bosses = [slomperor, gigagoblin]
+
+bosses_floor_1 = [slomperor, gigagoblin]
+
+bosses_floor_2 = [c_monstrosity,gigatoad]
+
+bosses_floor_3 = [lost_king]# c_monstrosity
 
 bosses_floor_4 = [gigatoad, c_monstrosity]
 
@@ -1109,13 +1119,14 @@ loot_weapons = [g_dagger,anvil_staff,glock,uzi,boomerang,monk_staff,f_bucket,tor
 
 #=========================================================================================#
 
-burn = StatusEffect("Burn", "🔥", "set ablaze!", 1, 1)
-infection = StatusEffect("Infection", "🦠", "infected!", 2, 99)
-daze = StatusEffect("Daze", "🌀", "dazed!", 2, 1)
-strength = StatusEffect("Strength", "🦾", "strengthened!", 2, 1)
-stun = StatusEffect("Stun","💫","stunned!",1,1)
-brittle = StatusEffect("Brittle","⛓️‍💥","embrittled!",1,1)
-exhaust = StatusEffect("Exhaust","💤","ehxausted!",1,99)
+burn = StatusEffect("Burn", "🔥", "set ablaze!", 1, 1) # Deals 4 damage per turn, unstackable
+infection = StatusEffect("Infection", "🦠", "infected!", 2, 99) #Deals 1 damage per turn per stack, and increases stacks by 50% each turn
+daze = StatusEffect("Daze", "🌀", "dazed!", 2, 1) #Reduces damage dealt by 50%
+strength = StatusEffect("Strength", "🦾", "strengthened!", 2, 1) #Increases damage dealt by 50%
+stun = StatusEffect("Stun","💫","stunned!",1,1) #Removes turn
+brittle = StatusEffect("Brittle","⛓️‍💥","embrittled!",1,1) #Increases damage taken by 66%
+exhaust = StatusEffect("Exhaust","💤","ehxausted!",1,99) #Player only, removes 1 energy at turn start per stack
+invisible = StatusEffect("Invisibility","🫥","turned invisible!",1,1) #Adds 100% raw dodge chance = 50% dodge chance if you have no other sources of dodge.
 
 #========================================Debuff Ticking==========================================#
 
@@ -1202,8 +1213,12 @@ def enemy_effect_tick(enemy):
                         enemy.die()
             case "Brittle":
                 if active_effect.duration > 1:
-                    enemy.damage_taken_multiplier *= (1.5 * active_effect.stacks)
-
+                    enemy.damage_taken_multiplier *= (1.66 * active_effect.stacks)
+            case "Invisible":
+                if active_effect.duration > 1:
+                    enemy.raw_dodge += 1
+                elif active_effect.duration == 1:
+                    enemy.raw_dodge -= 1
 
         active_effect.tick()
         if (active_effect.duration < 1):
@@ -1213,6 +1228,7 @@ def player_effect_tick():
     global player_effect_damage_multiplier
     global player_effect_damage_taken_multiplier
     global player_health
+    global player_raw_dodge
 
     player_effect_damage_multiplier = 1.0
     player_effect_damage_taken_multiplier = 1.0
@@ -1249,10 +1265,14 @@ def player_effect_tick():
 
             case "Brittle":
                 if active_effect.duration > 1:
-                    player_effect_damage_taken_multiplier *= (1.5 * active_effect.stacks)
+                    player_effect_damage_taken_multiplier *= (1.66 * active_effect.stacks)
             case "Stun":
                 player_stunned = True
-
+            case "Invisible":
+                if active_effect.duration > 1:
+                    player_raw_dodge += 1
+                elif active_effect.duration == 1:
+                    player_raw_dodge -= 1
 
         active_effect.tick()
         if (active_effect.duration < 1):
@@ -1665,6 +1685,8 @@ def player_attack(PlayerAttack, Enemy):
                 attacks *= 3
             case "Decuple Attack":
                 attacks *= 10
+            case "Invisible":
+                apply_effect(invisible, player_active_effects, player_health, "player", 2, 1)
 
     for a in range (0,attacks):
         targets = []
@@ -1800,6 +1822,8 @@ def level_up():
     global player_health
     global player_vitality
     global player_energy
+    global player_raw_dodge
+    global player_dodge
 
     xp -= xp_needed
     xp_needed = int(xp_needed ** 1.1)
@@ -1825,6 +1849,8 @@ def level_up():
             increase_intelligence(1)
 
     player_energy = player_max_energy
+
+    player_dodge = calc_dodge(player_raw_dodge)
 
 def test_for_level_up():
     global xp
@@ -1866,7 +1892,7 @@ def increase_strength(amount):
 def increase_dexterity(amount):
     global player_dexterity
     global player_crit
-    global player_dodge
+    global player_raw_dodge
     inspiration = 1
     if random.random() < 0.05 + (player_intelligence * .05):
         inspiration = 2
@@ -1874,11 +1900,12 @@ def increase_dexterity(amount):
     amount *= inspiration
 
     crit_increase = .1 * amount
-    dodge_increase =(.05*amount)
+    dodge_increase =.1 *amount
 
     player_dexterity += amount
     player_crit += crit_increase
-    player_dodge += dodge_increase
+    player_raw_dodge += dodge_increase
+
     if inspiration == 1:
         print(f"⏏️ Your Dexterity was increased from ⚜️{player_dexterity-amount} to ⚜️{player_dexterity}.")
     else:
@@ -1925,11 +1952,20 @@ def increase_intelligence(amount):
 
 #-----------------------------------------------------------------------------------#
 
+def calc_dodge(base_dodge):
+    dodge = 1 - 1/(base_dodge + 1)
+    return dodge
+
+#-----------------------------------------------------------------------------------#
+
 def see_stats():
     global xp
     global xp_needed
     divisor = xp_needed/10
     xp_progress = int(xp / divisor)
+
+    player_dodge = calc_dodge(player_raw_dodge)
+
     print(f"---- STATS ----\n"
         f"\nCurrent Level: ⭐ {player_level} ⭐\n"
         f"Strength: 💢{player_strength}\n"
