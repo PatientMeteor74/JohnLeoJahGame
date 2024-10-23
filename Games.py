@@ -1194,7 +1194,7 @@ monk_staff = PlayerAttack("Monk Staff", "You smach that fella head smoove off wi
 f_bucket = PlayerAttack("Fire Bucket", "You dump a torrent of fire towards the enemies...", 0, 8, ["Ignite","Splash 2"], 3)
 torch = PlayerAttack("Old Torch", "You somehow relight the torch and swing...",4,5,["Ignite"], 1)
 r_scythe = PlayerAttack("Reaping Scythe","You take a wide swipe with your scythe...",10,7,["Omni Strike","Aimless"], 3)
-tp_hammer = PlayerAttack("1001LB Hammer","With tremendous effort, you wildly swing the immense hammer...",48,18,["Aimless"], 3)
+tp_hammer = PlayerAttack("1001LB Hammer","With tremendous effort, you wildly swing the immense hammer...",45,18,["Aimless"], 3)
 l_staff = PlayerAttack("Light Staff", "You raise the staff high into the air, producing a blinding light ...",0,6,["Daze","Omni Strike","Aimless"], 3)
 flare_gun = PlayerAttack("Flare Gun", "You fire off a blinding flare ...",0,2,["Daze"], 2)
 g_launcher = PlayerAttack("Gob-omb Launcher", "A sizzling bomb flies through the air...",10,5,["Splash 2","Aimless"], 2)
@@ -1623,7 +1623,7 @@ def fight(enemies: list[Enemy]):
                 except IndexError or ValueError:
                     print("That's not an available action, try again.")
                     continue
-                if combat_actions[chosen_action] and enemies[0] != target== "Run Away": #----------Run away action
+                if combat_actions[chosen_action] == "Run Away" and enemies[0] != target : #----------Run away action
                     if player_energy >= math.floor(player_max_energy/3):
                         print(f"-⚡️{math.floor(player_max_energy / 3)}")
                         print("You pee your pants a little and sprint towards the first escape you see...")
